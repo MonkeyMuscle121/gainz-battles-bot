@@ -29,7 +29,9 @@ class GainzBattlesGame:
         return True
 
     async def play_card(self, interaction: discord.Interaction, card_index: int, stat: str):
-        """Handles playing a card when using slash command"""
+        """Fixed version with proper interaction handling"""
+        await interaction.response.defer()  # This prevents "did not respond"
+
         player_id = interaction.user.id
         if player_id not in self.players:
             await interaction.followup.send("❌ You are not in the game!", ephemeral=True)
@@ -37,14 +39,13 @@ class GainzBattlesGame:
 
         player = self.players[player_id]
         if card_index < 0 or card_index >= len(player["cards"]):
-            await interaction.followup.send("❌ Invalid card number! Use `/hand` to check your cards.", ephemeral=True)
+            await interaction.followup.send("❌ Invalid card number! Use `/hand` to check.", ephemeral=True)
             return
 
-        # Play the card
         card = player["cards"].pop(card_index)
         self.played_cards[player_id] = card
 
-        # Show the played card publicly
+        # Show played card
         embed = discord.Embed(
             title=f"💪 {player['name']} played **{card[0]}**",
             color=0xFFD700
@@ -59,16 +60,15 @@ class GainzBattlesGame:
         )
         await interaction.followup.send(embed=embed)
 
-        # Check if all active players have played
-        active_players = len([p for p in self.players.values() if len(p["cards"]) > 0])
-        if len(self.played_cards) == active_players:
+        # Check if round is complete
+        active = len([p for p in self.players.values() if len(p["cards"]) > 0])
+        if len(self.played_cards) == active:
             await self.resolve_round(interaction, stat.capitalize())
 
     async def resolve_round(self, interaction: discord.Interaction, stat: str):
         if not self.played_cards:
             return
 
-        # Find winner
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         won_cards = list(self.played_cards.values())
 
@@ -79,7 +79,6 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.current_leader = winner_id
 
-        # Check if game is over
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             winner_name = self.players[winner_id]["name"]
