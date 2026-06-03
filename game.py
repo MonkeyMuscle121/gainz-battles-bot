@@ -10,55 +10,55 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-games = {}  # channel_id : game instance
+games = {}
 
 @bot.event
 async def on_ready():
-    print(f"💪 $GAINZ BATTLES Bot is now online as {bot.user}")
+    print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
-# ====================== SYNC COMMAND ======================
-@bot.tree.command(name="sync", description="Sync slash commands to this server (Owner only)")
+# ====================== SIMPLE SYNC (No ID needed) ======================
+@bot.tree.command(name="sync", description="Sync slash commands")
 async def sync(interaction: discord.Interaction):
-    if interaction.user.id != 123456789012345678:   # ← CHANGE TO YOUR DISCORD USER ID
-        await interaction.response.send_message("❌ Only the bot owner can use this.", ephemeral=True)
-        return
-
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
     try:
-        synced = await bot.tree.sync(guild=interaction.guild)
-        await interaction.followup.send(f"✅ Synced **{len(synced)}** commands to this server!", ephemeral=False)
+        guild_synced = await bot.tree.sync(guild=interaction.guild)
+        global_synced = await bot.tree.sync()
+        
+        await interaction.followup.send(
+            f"✅ Commands synced!\n"
+            f"Guild: {len(guild_synced)} | Global: {len(global_synced)}\n"
+            f"Wait 1-2 minutes and check the command list.", 
+            ephemeral=True
+        )
     except Exception as e:
-        await interaction.followup.send(f"❌ Sync failed: {e}", ephemeral=True)
+        await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
-# ====================== TEST PLAYER ======================
+# ====================== REST OF COMMANDS ======================
+
 @bot.tree.command(name="addtest", description="Add a test player for solo testing")
 async def addtest(interaction: discord.Interaction):
     channel_id = interaction.channel.id
     if channel_id not in games:
-        await interaction.response.send_message("Please do `/join` first!", ephemeral=True)
+        await interaction.response.send_message("Please use `/join` first!", ephemeral=True)
         return
-
     game = games[channel_id]
     if game.add_test_player():
-        await interaction.response.send_message("🤖 **Test Player** has been added! You can now `/start` the game.")
+        await interaction.response.send_message("🤖 **Test Player** added! Use `/start`.")
     else:
-        await interaction.response.send_message("❌ Game is already full (max 4 players).", ephemeral=True)
-
-# ====================== GAME COMMANDS ======================
+        await interaction.response.send_message("Game is full!", ephemeral=True)
 
 @bot.tree.command(name="join", description="Join the $GAINZ BATTLES game")
 async def join(interaction: discord.Interaction):
     channel_id = interaction.channel.id
     if channel_id not in games:
         games[channel_id] = GainzBattlesGame()
-    
     game = games[channel_id]
     if game.add_player(interaction.user.id, interaction.user.display_name):
-        await interaction.response.send_message(f"💪 {interaction.user.mention} joined the battle! ({len(game.players)}/4)")
+        await interaction.response.send_message(f"💪 {interaction.user.mention} joined! ({len(game.players)}/4)")
     else:
-        await interaction.response.send_message("❌ Game is full (max 4) or you're already in!", ephemeral=True)
+        await interaction.response.send_message("❌ Game full or already joined!", ephemeral=True)
 
-@bot.tree.command(name="start", description="Start the $GAINZ BATTLES game")
+@bot.tree.command(name="start", description="Start the game")
 async def start(interaction: discord.Interaction):
     channel_id = interaction.channel.id
     if channel_id not in games:
@@ -66,32 +66,24 @@ async def start(interaction: discord.Interaction):
         return
     game = games[channel_id]
     if game.start_game():
-        await interaction.response.send_message(f"🎮 **$GAINZ BATTLES STARTED!**\nFirst leader: **{game.players[game.current_leader]['name']}**")
+        await interaction.response.send_message(f"🎮 Game Started! Leader: **{game.players[game.current_leader]['name']}**")
     else:
-        await interaction.response.send_message("Need at least 2 players to start!", ephemeral=True)
+        await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="hand", description="View your cards privately")
+@bot.tree.command(name="hand", description="View your cards")
 async def hand(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
     if not game or interaction.user.id not in game.players:
         await interaction.response.send_message("You're not in a game!", ephemeral=True)
         return
-
     player = game.players[interaction.user.id]
-    embed = discord.Embed(title=f"Your Hand ({len(player['cards'])} cards)", color=0x00FF00)
-    
+    embed = discord.Embed(title=f"Your Hand ({len(player['cards'])})", color=0x00FF00)
     for i, (name, stats) in enumerate(player["cards"]):
-        embed.add_field(
-            name=f"{i}. {name}",
-            value=f"**STR** {stats['Strength']} | **AGI** {stats['Agility']}\n"
-                  f"**INT** {stats['Intelligence']} | **CUT** {stats['Cuteness']}\n"
-                  f"**VOL** {stats['Volume']} | **BAN** {stats['Banana Affinity']}",
-            inline=False
-        )
+        embed.add_field(name=f"{i}. {name}", value=f"STR:{stats['Strength']} AGI:{stats['Agility']}", inline=False)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="play", description="Play a card")
-@app_commands.describe(card_index="Card number (0-5)", stat="Stat to battle with")
+@app_commands.describe(card_index="Card number 0-5", stat="Stat")
 @app_commands.choices(stat=[
     app_commands.Choice(name="Strength", value="Strength"),
     app_commands.Choice(name="Agility", value="Agility"),
@@ -103,19 +95,19 @@ async def hand(interaction: discord.Interaction):
 async def play(interaction: discord.Interaction, card_index: int, stat: str):
     game = games.get(interaction.channel.id)
     if not game:
-        await interaction.response.send_message("No game running in this channel!", ephemeral=True)
+        await interaction.response.send_message("No game running!", ephemeral=True)
         return
     await game.play_card(interaction, card_index, stat)
 
-@bot.tree.command(name="leaderboard", description="Show current leaderboard")
+@bot.tree.command(name="leaderboard", description="Show leaderboard")
 async def leaderboard(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
     if not game:
         await interaction.response.send_message("No game running!", ephemeral=True)
         return
-    embed = discord.Embed(title="💪 $GAINZ BATTLES Leaderboard", color=0xFFD700)
-    for player in game.players.values():
-        embed.add_field(name=player["name"], value=f"Cards: {len(player['cards'])}", inline=False)
+    embed = discord.Embed(title="Leaderboard", color=0xFFD700)
+    for p in game.players.values():
+        embed.add_field(name=p["name"], value=f"Cards: {len(p['cards'])}", inline=False)
     await interaction.response.send_message(embed=embed)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
