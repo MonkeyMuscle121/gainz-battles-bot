@@ -14,6 +14,24 @@ games = {}
 @bot.event
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
+    print("Use !forcesync in the channel to fix commands.")
+
+# FORCE SYNC COMMAND (Prefix)
+@bot.command(name="forcesync")
+async def forcesync(ctx):
+    await ctx.send("🔄 Clearing and resyncing commands...")
+    try:
+        # Clear old commands
+        bot.tree.clear_commands(guild=ctx.guild)
+        
+        # Re-register clean commands
+        guild_synced = await bot.tree.sync(guild=ctx.guild)
+        
+        await ctx.send(f"✅ **Guild sync complete!** ({len(guild_synced)} commands)\n\n**Restart your Discord app completely.**")
+    except Exception as e:
+        await ctx.send(f"❌ Error: {e}")
+
+# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -39,7 +57,7 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="play", description="Choose stat (Leader only)")
+@bot.tree.command(name="play", description="Choose stat only (no card_index)")
 @app_commands.describe(stat="Stat to battle with")
 @app_commands.choices(stat=[
     app_commands.Choice(name="Strength", value="Strength"),
