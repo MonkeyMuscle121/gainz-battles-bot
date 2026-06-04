@@ -3,7 +3,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
-from cards import get_all_cards
 from game import GainzBattlesGame
 
 intents = discord.Intents.default()
@@ -47,7 +46,7 @@ async def join(interaction: discord.Interaction):
     if game.add_player(interaction.user.id, interaction.user.display_name):
         await interaction.response.send_message(f"💪 {interaction.user.mention} joined! ({len(game.players)}/4)")
     else:
-        await interaction.response.send_message("Game full!", ephemeral=True)
+        await interaction.response.send_message("Game full or already joined!", ephemeral=True)
 
 @bot.tree.command(name="start", description="Start the game")
 async def start(interaction: discord.Interaction):
@@ -73,8 +72,8 @@ async def hand(interaction: discord.Interaction):
         embed.add_field(name=f"{i}. {name}", value=f"STR:{stats['Strength']} AGI:{stats['Agility']}", inline=False)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-# NEW SIMPLIFIED PLAY COMMAND
-@bot.tree.command(name="play", description="Choose a stat - bot picks random card")
+# SIMPLIFIED PLAY - Only choose stat, bot picks random card
+@bot.tree.command(name="play", description="Choose stat - bot picks random card")
 @app_commands.describe(stat="Stat to battle with")
 @app_commands.choices(stat=[
     app_commands.Choice(name="Strength", value="Strength"),
