@@ -14,22 +14,28 @@ games = {}
 @bot.event
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
-    print("Bot ready. Use /forcesync in the channel.")
 
-# ====================== FORCE SYNC ======================
-@bot.tree.command(name="forcesync", description="Force full sync of commands")
-async def forcesync(interaction: discord.Interaction):
+@bot.tree.command(name="sync", description="Sync slash commands")
+async def sync(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     try:
-        # Clear and resync
-        bot.tree.clear_commands(guild=interaction.guild)
         await bot.tree.sync(guild=interaction.guild)
-        await bot.tree.sync()  # global
-        await interaction.followup.send("✅ **Full sync forced!**\n\nRestart your Discord app and wait 30-60 seconds.", ephemeral=True)
+        await bot.tree.sync()
+        await interaction.followup.send("✅ Commands synced!", ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"Error: {e}", ephemeral=True)
 
-# ====================== GAME COMMANDS ======================
+@bot.tree.command(name="addtest", description="Add test player")
+async def addtest(interaction: discord.Interaction):
+    channel_id = interaction.channel.id
+    if channel_id not in games:
+        await interaction.response.send_message("Use `/join` first!", ephemeral=True)
+        return
+    game = games[channel_id]
+    if game.add_test_player():
+        await interaction.response.send_message("🤖 Test Player added!")
+    else:
+        await interaction.response.send_message("Game full!", ephemeral=True)
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
