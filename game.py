@@ -100,4 +100,3 @@ class GainzBattlesGame:
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
 
-bot.run(os.getenv("DISCORD_TOKEN"))   # <--- REMOVE THIS LINE
