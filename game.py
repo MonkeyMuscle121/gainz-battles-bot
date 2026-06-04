@@ -64,11 +64,19 @@ class GainzBattlesGame:
         card = player["cards"].pop(card_index)
         self.played_cards[player_id] = card
 
-        embed = discord.Embed(title=f"💪 {player['name']} played **{card[0]}**", color=0xFFD700)
-        embed.set_image(url=card[1]["image"])
-        embed.add_field(name="Stats", value=f"**STR** {card[1]['Strength']} | **AGI** {card[1]['Agility']}\n"
-                                            f"**INT** {card[1]['Intelligence']} | **CUT** {card[1]['Cuteness']}\n"
-                                            f"**VOL** {card[1]['Volume']} | **BAN** {card[1]['Banana Affinity']}", inline=False)
+        # FULL CARD IMAGE DISPLAY
+        embed = discord.Embed(
+            title=f"💪 {player['name']} played **{card[0]}**",
+            color=0xFFD700
+        )
+        embed.set_image(url=card[1]["image"])   # This should show the full JPG
+        embed.add_field(
+            name="Stats",
+            value=f"**STR** {card[1]['Strength']} | **AGI** {card[1]['Agility']}\n"
+                  f"**INT** {card[1]['Intelligence']} | **CUT** {card[1]['Cuteness']}\n"
+                  f"**VOL** {card[1]['Volume']} | **BAN** {card[1]['Banana Affinity']}",
+            inline=False
+        )
         await interaction.followup.send(embed=embed)
 
         if self.test_player_id and self.test_player_id not in self.played_cards:
