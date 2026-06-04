@@ -1,7 +1,7 @@
 # game.py
 import random
 import discord
-from cards import get_random_card
+from cards import get_random_card, MONKEY_CARDS
 
 class GainzBattlesGame:
     def __init__(self):
@@ -44,19 +44,24 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Deal one private card to each player"""
+        """Deal one unique random card to each player privately"""
         self.played_cards = {}
-        for pid in self.players:
+        available_cards = list(MONKEY_CARDS.items())
+        random.shuffle(available_cards)
+
+        for i, pid in enumerate(self.players.keys()):
             player = self.players[pid]
             if not player["cards"]:
                 continue
-            card_index = random.randint(0, len(player["cards"]) - 1)
-            card = player["cards"].pop(card_index)
-            self.played_cards[pid] = card
 
-            # Show privately
+            # Pick unique card for this round
+            card_name, card_data = available_cards[i % len(available_cards)]
+            self.played_cards[pid] = (card_name, card_data.copy())
+
+            # Show privately to the player
             embed = discord.Embed(title=f"Round {self.round_number} - Your Card", color=0x00FF00)
-            embed.set_image(url=card[1]["image"])
+            embed.set_image(url=card_data["image"])
+            embed.add_field(name=card_name, value="Ready for this round", inline=False)
             try:
                 user = await interaction.client.fetch_user(pid)
                 await user.send(embed=embed)
@@ -70,9 +75,9 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
             return
 
-        # Reveal all cards
         await interaction.followup.send(f"**Round {self.round_number}** — Stat Chosen: **{stat}**")
 
+        # Reveal all cards
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
@@ -100,3 +105,4 @@ class GainzBattlesGame:
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
 
+bot.run(os.getenv("DISCORD_TOKEN"))  # <--- REMOVE THIS LINE
