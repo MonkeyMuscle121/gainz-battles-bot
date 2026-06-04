@@ -37,7 +37,7 @@ async def addtest(interaction: discord.Interaction):
     if game.add_test_player():
         await interaction.response.send_message("🤖 Test Player added!")
     else:
-        await interaction.response.send_message("Game is full!", ephemeral=True)
+        await interaction.response.send_message("Game full!", ephemeral=True)
 
 # ====================== GAME COMMANDS ======================
 
@@ -52,7 +52,7 @@ async def join(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("❌ Game is full or you're already in!", ephemeral=True)
 
-@bot.tree.command(name="start", description="Start the game - hands shown privately")
+@bot.tree.command(name="start", description="Start the game")
 async def start(interaction: discord.Interaction):
     channel_id = interaction.channel.id
     if channel_id not in games:
@@ -61,13 +61,12 @@ async def start(interaction: discord.Interaction):
     game = games[channel_id]
     if game.start_game():
         await interaction.response.send_message(f"🎮 **$GAINZ BATTLES STARTED!**\nFirst leader: **{game.players[game.current_leader]['name']}**")
-        # Show hands privately to all players
-        for pid in game.players:
-            await game.show_hand(interaction, pid)
+        # Secretly deal one card to each player for this round
+        await game.deal_round_cards(interaction)
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="play", description="Choose a stat (bot auto-picks your card)")
+@bot.tree.command(name="play", description="Choose stat (Leader only)")
 @app_commands.describe(stat="Stat to battle with")
 @app_commands.choices(stat=[
     app_commands.Choice(name="Strength", value="Strength"),
@@ -83,6 +82,18 @@ async def play(interaction: discord.Interaction, stat: str):
         await interaction.response.send_message("No game running!", ephemeral=True)
         return
     await game.play_card(interaction, stat)
+
+@bot.tree.command(name="hand", description="View your remaining cards")
+async def hand(interaction: discord.Interaction):
+    game = games.get(interaction.channel.id)
+    if not game or interaction.user.id not in game.players:
+        await interaction.response.send_message("You're not in a game!", ephemeral=True)
+        return
+    player = game.players[interaction.user.id]
+    embed = discord.Embed(title=f"Your Remaining Cards ({len(player['cards'])})", color=0x00FF00)
+    for i, (name, stats) in enumerate(player["cards"]):
+        embed.add_field(name=f"{i}. {name}", value=f"STR:{stats['Strength']} AGI:{stats['Agility']}", inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="leaderboard", description="Show leaderboard")
 async def leaderboard(interaction: discord.Interaction):
