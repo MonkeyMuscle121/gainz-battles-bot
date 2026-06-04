@@ -7,7 +7,7 @@ class GainzBattlesGame:
     def __init__(self):
         self.players = {}
         self.current_leader = None
-        self.played_cards = {}
+        self.played_cards = {}   # Secret until reveal
         self.max_players = 4
         self.round_number = 0
         self.test_player_id = None
@@ -43,73 +43,51 @@ class GainzBattlesGame:
         self.round_number = 1
         return True
 
+    async def deal_round_cards(self, interaction: discord.Interaction):
+        """Secretly pick one card per player at start of round"""
+        self.played_cards = {}
+        for pid in self.players:
+            player = self.players[pid]
+            if not player["cards"]:
+                continue
+            card_index = random.randint(0, len(player["cards"]) - 1)
+            card = player["cards"].pop(card_index)
+            self.played_cards[pid] = card
+
+            # Show privately to the player
+            embed = discord.Embed(title="Your Card for this Round", color=0x00FF00)
+            embed.set_image(url=card[1]["image"])
+            embed.add_field(name=card[0], value=f"STR:{card[1]['Strength']} AGI:{card[1]['Agility']}\nINT:{card[1]['Intelligence']} CUT:{card[1]['Cuteness']}", inline=False)
+            try:
+                user = await interaction.client.fetch_user(pid)
+                await user.send(embed=embed)
+            except:
+                pass
+
     async def play_card(self, interaction: discord.Interaction, stat: str):
         await interaction.response.defer()
 
-        player_id = interaction.user.id
-        if player_id not in self.players:
-            await interaction.followup.send("❌ You are not in the game!", ephemeral=True)
+        if interaction.user.id != self.current_leader:
+            await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
             return
 
-        player = self.players[player_id]
+        # Reveal all secretly chosen cards
+        await interaction.followup.send(f"**Round {self.round_number}** — Stat: **{stat}**")
 
-        if player_id in self.played_cards:
-            await interaction.followup.send("❌ You already played this round!", ephemeral=True)
-            return
+        for pid, card in self.played_cards.items():
+            player_name = self.players[pid]["name"]
+            embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
+            embed.set_image(url=card[1]["image"])
+            await interaction.followup.send(embed=embed)
 
-        if not player["cards"]:
-            await interaction.followup.send("❌ You have no cards left!", ephemeral=True)
-            return
-
-        # Auto pick random card
-        card_index = random.randint(0, len(player["cards"]) - 1)
-        card = player["cards"].pop(card_index)
-        self.played_cards[player_id] = card
-
-        # CLEAN EMBED - Image only + simple text (like your screenshot)
-        embed = discord.Embed(
-            title=f"💪 {player['name']} played **{card[0]}**",
-            description=f"Chose **{stat}**",
-            color=0xFFD700
-        )
-        embed.set_image(url=card[1]["image"])   # Full card image
-        await interaction.followup.send(embed=embed)
-
-        if self.test_player_id and self.test_player_id not in self.played_cards:
-            await self.auto_play_test_player(interaction, stat)
-
-        active = len([p for p in self.players.values() if len(p["cards"]) > 0])
-        if len(self.played_cards) == active:
-            await self.resolve_round(interaction, stat)
-
-    async def auto_play_test_player(self, interaction: discord.Interaction, stat: str):
-        if not self.test_player_id or self.test_player_id not in self.players:
-            return
-        test_player = self.players[self.test_player_id]
-        if not test_player["cards"]:
-            return
-        card_index = random.randint(0, len(test_player["cards"]) - 1)
-        card = test_player["cards"].pop(card_index)
-        self.played_cards[self.test_player_id] = card
-
-        embed = discord.Embed(
-            title=f"🤖 Test Player played **{card[0]}**",
-            description=f"Chose **{stat}**",
-            color=0xAAAAAA
-        )
-        embed.set_image(url=card[1]["image"])
-        await interaction.followup.send(embed=embed)
-
-    async def resolve_round(self, interaction: discord.Interaction, stat: str):
-        if not self.played_cards:
-            return
-
+        # Determine winner
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
-        won_cards = list(self.played_cards.values())
+        winner_name = self.players[winner_id]["name"]
 
+        # Winner takes cards
+        won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        winner_name = self.players[winner_id]["name"]
         await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
 
         self.current_leader = winner_id
@@ -118,6 +96,7 @@ class GainzBattlesGame:
 
         await self.show_remaining_cards(interaction)
 
+        # Check game over
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
