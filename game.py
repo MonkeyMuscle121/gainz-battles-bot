@@ -39,55 +39,66 @@ class GainzBattlesGame:
     def start_game(self):
         if len(self.players) < 2:
             return False
-        self.current_leader = random.choice(list(self.players.keys()))  # Random first leader
+        self.current_leader = random.choice(list(self.players.keys()))
         self.round_number = 1
         return True
-
-    async def show_hand(self, interaction: discord.Interaction, player_id: int):
-        """Show hand privately to a player"""
-        if player_id not in self.players:
-            return
-        player = self.players[player_id]
-        embed = discord.Embed(title=f"Your Hand ({len(player['cards'])} cards) - Round {self.round_number}", color=0x00FF00)
-        for i, (name, stats) in enumerate(player["cards"]):
-            embed.add_field(
-                name=f"{i}. {name}",
-                value=f"**STR** {stats['Strength']} | **AGI** {stats['Agility']}\n"
-                      f"**INT** {stats['Intelligence']} | **CUT** {stats['Cuteness']}\n"
-                      f"**VOL** {stats['Volume']} | **BAN** {stats['Banana Affinity']}",
-                inline=False
-            )
-        user = await interaction.client.fetch_user(player_id)
-        try:
-            await user.send(embed=embed)
-        except:
-            pass  # Can't DM user
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
         await interaction.response.defer()
 
-        # Auto-play for all players
-        for player_id in list(self.players.keys()):
-            player = self.players[player_id]
-            if not player["cards"]:
-                continue
-            if player_id in self.played_cards:
-                continue
+        player_id = interaction.user.id
+        if player_id not in self.players:
+            await interaction.followup.send("❌ You are not in the game!", ephemeral=True)
+            return
 
-            card_index = random.randint(0, len(player["cards"]) - 1)
-            card = player["cards"].pop(card_index)
-            self.played_cards[player_id] = card
+        player = self.players[player_id]
 
-            embed = discord.Embed(title=f"💪 {player['name']} played **{card[0]}**", color=0xFFD700)
-            embed.set_image(url=card[1]["image"])
-            embed.add_field(name="Stats", value=f"**STR** {card[1]['Strength']} | **AGI** {card[1]['Agility']}\n"
-                                                f"**INT** {card[1]['Intelligence']} | **CUT** {card[1]['Cuteness']}\n"
-                                                f"**VOL** {card[1]['Volume']} | **BAN** {card[1]['Banana Affinity']}", inline=False)
-            await interaction.followup.send(embed=embed)
+        if player_id in self.played_cards:
+            await interaction.followup.send("❌ You already played this round!", ephemeral=True)
+            return
 
-        # Resolve round
-        if len(self.played_cards) > 0:
+        if not player["cards"]:
+            await interaction.followup.send("❌ You have no cards left!", ephemeral=True)
+            return
+
+        # Auto pick random card
+        card_index = random.randint(0, len(player["cards"]) - 1)
+        card = player["cards"].pop(card_index)
+        self.played_cards[player_id] = card
+
+        # CLEAN EMBED - Image only + simple text (like your screenshot)
+        embed = discord.Embed(
+            title=f"💪 {player['name']} played **{card[0]}**",
+            description=f"Chose **{stat}**",
+            color=0xFFD700
+        )
+        embed.set_image(url=card[1]["image"])   # Full card image
+        await interaction.followup.send(embed=embed)
+
+        if self.test_player_id and self.test_player_id not in self.played_cards:
+            await self.auto_play_test_player(interaction, stat)
+
+        active = len([p for p in self.players.values() if len(p["cards"]) > 0])
+        if len(self.played_cards) == active:
             await self.resolve_round(interaction, stat)
+
+    async def auto_play_test_player(self, interaction: discord.Interaction, stat: str):
+        if not self.test_player_id or self.test_player_id not in self.players:
+            return
+        test_player = self.players[self.test_player_id]
+        if not test_player["cards"]:
+            return
+        card_index = random.randint(0, len(test_player["cards"]) - 1)
+        card = test_player["cards"].pop(card_index)
+        self.played_cards[self.test_player_id] = card
+
+        embed = discord.Embed(
+            title=f"🤖 Test Player played **{card[0]}**",
+            description=f"Chose **{stat}**",
+            color=0xAAAAAA
+        )
+        embed.set_image(url=card[1]["image"])
+        await interaction.followup.send(embed=embed)
 
     async def resolve_round(self, interaction: discord.Interaction, stat: str):
         if not self.played_cards:
