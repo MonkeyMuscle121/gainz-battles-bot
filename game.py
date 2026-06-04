@@ -7,7 +7,7 @@ class GainzBattlesGame:
     def __init__(self):
         self.players = {}
         self.current_leader = None
-        self.played_cards = {}   # Secret until reveal
+        self.played_cards = {}
         self.max_players = 4
         self.round_number = 0
         self.test_player_id = None
@@ -44,7 +44,7 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Secretly pick one card per player at start of round"""
+        """Deal one private card to each player for the round"""
         self.played_cards = {}
         for pid in self.players:
             player = self.players[pid]
@@ -54,10 +54,10 @@ class GainzBattlesGame:
             card = player["cards"].pop(card_index)
             self.played_cards[pid] = card
 
-            # Show privately to the player
-            embed = discord.Embed(title="Your Card for this Round", color=0x00FF00)
+            # Show privately to the player only
+            embed = discord.Embed(title=f"Round {self.round_number} - Your Card", color=0x00FF00)
             embed.set_image(url=card[1]["image"])
-            embed.add_field(name=card[0], value=f"STR:{card[1]['Strength']} AGI:{card[1]['Agility']}\nINT:{card[1]['Intelligence']} CUT:{card[1]['Cuteness']}", inline=False)
+            embed.add_field(name=card[0], value="Ready to play", inline=False)
             try:
                 user = await interaction.client.fetch_user(pid)
                 await user.send(embed=embed)
@@ -71,8 +71,8 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
             return
 
-        # Reveal all secretly chosen cards
-        await interaction.followup.send(f"**Round {self.round_number}** — Stat: **{stat}**")
+        # Reveal all cards
+        await interaction.followup.send(f"**Round {self.round_number}** — Stat Chosen: **{stat}**")
 
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
@@ -84,7 +84,6 @@ class GainzBattlesGame:
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
 
-        # Winner takes cards
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
@@ -94,22 +93,12 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
-        await self.show_remaining_cards(interaction)
+        # Deal new private cards for next round
+        await self.deal_round_cards(interaction)
 
         # Check game over
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
 
-    async def show_remaining_cards(self, interaction: discord.Interaction):
-        embed = discord.Embed(title=f"📊 Round {self.round_number} — Remaining Cards", color=0x00FF88)
-        embed.description = f"**Next Leader:** {self.players[self.current_leader]['name']}\n\n"
-
-        for player in self.players.values():
-            names = ", ".join([c[0] for c in player["cards"]]) if player["cards"] else "No cards left"
-            embed.add_field(
-                name=f"{player['name']} — {len(player['cards'])} cards",
-                value=names[:400] + ("..." if len(names) > 400 else ""),
-                inline=False
-            )
-        await interaction.followup.send(embed=embed)
+bot.run(os.getenv("DISCORD_TOKEN"))
