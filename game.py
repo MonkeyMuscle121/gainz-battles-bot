@@ -43,7 +43,7 @@ class GainzBattlesGame:
         self.round_number = 1
         return True
 
-    async def play_card(self, interaction: discord.Interaction, card_index: int, stat: str):
+    async def play_card(self, interaction: discord.Interaction, stat: str):
         await interaction.response.defer()
 
         player_id = interaction.user.id
@@ -57,26 +57,20 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ You already played this round!", ephemeral=True)
             return
 
-        if card_index < 0 or card_index >= len(player["cards"]):
-            await interaction.followup.send("❌ Invalid card index!", ephemeral=True)
+        if not player["cards"]:
+            await interaction.followup.send("❌ You have no cards left!", ephemeral=True)
             return
 
+        # AUTO PICK RANDOM CARD
+        card_index = random.randint(0, len(player["cards"]) - 1)
         card = player["cards"].pop(card_index)
         self.played_cards[player_id] = card
 
-        # FULL CARD IMAGE DISPLAY
-        embed = discord.Embed(
-            title=f"💪 {player['name']} played **{card[0]}**",
-            color=0xFFD700
-        )
-        embed.set_image(url=card[1]["image"])   # This should show the full JPG
-        embed.add_field(
-            name="Stats",
-            value=f"**STR** {card[1]['Strength']} | **AGI** {card[1]['Agility']}\n"
-                  f"**INT** {card[1]['Intelligence']} | **CUT** {card[1]['Cuteness']}\n"
-                  f"**VOL** {card[1]['Volume']} | **BAN** {card[1]['Banana Affinity']}",
-            inline=False
-        )
+        embed = discord.Embed(title=f"💪 {player['name']} played **{card[0]}**", color=0xFFD700)
+        embed.set_image(url=card[1]["image"])
+        embed.add_field(name="Stats", value=f"**STR** {card[1]['Strength']} | **AGI** {card[1]['Agility']}\n"
+                                            f"**INT** {card[1]['Intelligence']} | **CUT** {card[1]['Cuteness']}\n"
+                                            f"**VOL** {card[1]['Volume']} | **BAN** {card[1]['Banana Affinity']}", inline=False)
         await interaction.followup.send(embed=embed)
 
         if self.test_player_id and self.test_player_id not in self.played_cards:
@@ -86,6 +80,7 @@ class GainzBattlesGame:
         if len(self.played_cards) == active:
             await self.resolve_round(interaction, stat.capitalize())
 
+    # (rest of the file remains the same as previous version)
     async def auto_play_test_player(self, interaction: discord.Interaction, stat: str):
         if not self.test_player_id or self.test_player_id not in self.players:
             return
