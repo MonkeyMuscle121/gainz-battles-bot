@@ -44,7 +44,7 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Deal one private card to each player for the round"""
+        """Deal one private card to each player"""
         self.played_cards = {}
         for pid in self.players:
             player = self.players[pid]
@@ -54,10 +54,9 @@ class GainzBattlesGame:
             card = player["cards"].pop(card_index)
             self.played_cards[pid] = card
 
-            # Show privately to the player only
+            # Show privately
             embed = discord.Embed(title=f"Round {self.round_number} - Your Card", color=0x00FF00)
             embed.set_image(url=card[1]["image"])
-            embed.add_field(name=card[0], value="Ready to play", inline=False)
             try:
                 user = await interaction.client.fetch_user(pid)
                 await user.send(embed=embed)
@@ -93,7 +92,7 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
-        # Deal new private cards for next round
+        # Deal new cards for next round
         await self.deal_round_cards(interaction)
 
         # Check game over
@@ -101,4 +100,4 @@ class GainzBattlesGame:
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(os.getenv("DISCORD_TOKEN"))   # <--- REMOVE THIS LINE
