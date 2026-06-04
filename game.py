@@ -44,7 +44,7 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Deal one unique random card to each player privately"""
+        """Deal one private card to each player"""
         self.played_cards = {}
         available_cards = list(MONKEY_CARDS.items())
         random.shuffle(available_cards)
@@ -54,14 +54,14 @@ class GainzBattlesGame:
             if not player["cards"]:
                 continue
 
-            # Pick unique card for this round
+            # Pick unique card
             card_name, card_data = available_cards[i % len(available_cards)]
             self.played_cards[pid] = (card_name, card_data.copy())
 
-            # Show privately to the player
+            # Send privately to the player
             embed = discord.Embed(title=f"Round {self.round_number} - Your Card", color=0x00FF00)
             embed.set_image(url=card_data["image"])
-            embed.add_field(name=card_name, value="Ready for this round", inline=False)
+            embed.add_field(name=card_name, value="This is your card for this round", inline=False)
             try:
                 user = await interaction.client.fetch_user(pid)
                 await user.send(embed=embed)
@@ -77,7 +77,7 @@ class GainzBattlesGame:
 
         await interaction.followup.send(f"**Round {self.round_number}** — Stat Chosen: **{stat}**")
 
-        # Reveal all cards
+        # Reveal all cards publicly
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
@@ -97,12 +97,10 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
-        # Deal new cards for next round
+        # Deal new private cards for next round
         await self.deal_round_cards(interaction)
 
-        # Check game over
+        # Check if game is over
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
-
-
