@@ -15,16 +15,19 @@ games = {}
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
+# ====================== RESET ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 Resetting commands...")
+    await ctx.send("🔄 **Full command reset in progress...**")
     try:
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ Reset complete! Restart Discord app.")
+        await ctx.send("✅ **Commands fully reset!**\n\n**Please:**\n1. Completely close Discord (task manager)\n2. Reopen Discord\n3. Wait 30 seconds")
     except Exception as e:
         await ctx.send(f"Error: {e}")
+
+# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -45,17 +48,18 @@ async def start(interaction: discord.Interaction):
         return
     game = games[channel_id]
     if game.start_game():
-        await interaction.response.send_message(f"🎮 **$GAINZ BATTLES STARTED!**\nFirst leader: **{game.players[game.current_leader]['name']}**")
+        await interaction.response.send_message(f"🎮 **$GAINZ BATTLES STARTED!**\nFirst leader: **{game.players[game.current_leader]['name']}**\n\n**All players:** Type `/card` to see your round card!")
         await game.deal_round_cards(interaction)
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="card", description="View your current round card (ephemeral)")
+@bot.tree.command(name="card", description="View your current round card")
 async def card(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
     if not game or interaction.user.id not in game.played_cards:
         await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
         return
+    
     card = game.played_cards[interaction.user.id]
     embed = discord.Embed(title=f"Round {game.round_number} • Your Card", color=0x00FF00)
     embed.set_image(url=card[1]["image"])
