@@ -14,23 +14,17 @@ games = {}
 @bot.event
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
-    print("Type !resetcommands to fix the command menu.")
 
-# FULL RESET COMMAND
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 **Clearing ALL old commands...**")
+    await ctx.send("🔄 Resetting commands...")
     try:
-        # Clear everything
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
-        await bot.tree.sync()  # global
-        
-        await ctx.send("✅ **Commands cleared and resynced!**\n\n**Please do this now:**\n1. Fully close Discord (including from task manager)\n2. Reopen Discord\n3. Wait 1 minute\n4. Check /play again")
+        await bot.tree.sync()
+        await ctx.send("✅ Reset complete! Restart Discord app.")
     except Exception as e:
         await ctx.send(f"Error: {e}")
-
-# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -56,7 +50,19 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="play", description="Choose stat only")
+@bot.tree.command(name="card", description="View your current round card (ephemeral)")
+async def card(interaction: discord.Interaction):
+    game = games.get(interaction.channel.id)
+    if not game or interaction.user.id not in game.played_cards:
+        await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
+        return
+    card = game.played_cards[interaction.user.id]
+    embed = discord.Embed(title=f"Round {game.round_number} • Your Card", color=0x00FF00)
+    embed.set_image(url=card[1]["image"])
+    embed.add_field(name=card[0], value="This is your card for this round", inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="play", description="Choose stat (Leader only)")
 @app_commands.describe(stat="Stat to battle with")
 @app_commands.choices(stat=[
     app_commands.Choice(name="Strength", value="Strength"),
