@@ -42,7 +42,7 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Send ephemeral card to each player in the channel"""
+        """Try to show each player their card ephemerally"""
         self.played_cards = {}
         available = list(MONKEY_CARDS.items())
         random.shuffle(available)
@@ -62,11 +62,11 @@ class GainzBattlesGame:
             embed.set_image(url=card_data["image"])
             embed.add_field(name=card_name, value="This is your card for this round", inline=False)
 
-            # Try to send ephemeral message
             try:
+                # Send ephemeral message
                 await interaction.followup.send(embed=embed, ephemeral=True)
             except:
-                # Fallback if ephemeral fails for other users
+                # Fallback DM
                 try:
                     user = await interaction.client.fetch_user(pid)
                     await user.send(embed=embed)
@@ -102,7 +102,7 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
-        # New round cards
+        # Next round cards
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
