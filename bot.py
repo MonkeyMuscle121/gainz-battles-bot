@@ -14,22 +14,21 @@ games = {}
 @bot.event
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
-    print("Use !forcesync in the channel to fix commands.")
+    print("Type !resetcommands to fix the command menu.")
 
-# FORCE SYNC COMMAND (Prefix)
-@bot.command(name="forcesync")
-async def forcesync(ctx):
-    await ctx.send("🔄 Clearing and resyncing commands...")
+# FULL RESET COMMAND
+@bot.command(name="resetcommands")
+async def resetcommands(ctx):
+    await ctx.send("🔄 **Clearing ALL old commands...**")
     try:
-        # Clear old commands
+        # Clear everything
         bot.tree.clear_commands(guild=ctx.guild)
+        await bot.tree.sync(guild=ctx.guild)
+        await bot.tree.sync()  # global
         
-        # Re-register clean commands
-        guild_synced = await bot.tree.sync(guild=ctx.guild)
-        
-        await ctx.send(f"✅ **Guild sync complete!** ({len(guild_synced)} commands)\n\n**Restart your Discord app completely.**")
+        await ctx.send("✅ **Commands cleared and resynced!**\n\n**Please do this now:**\n1. Fully close Discord (including from task manager)\n2. Reopen Discord\n3. Wait 1 minute\n4. Check /play again")
     except Exception as e:
-        await ctx.send(f"❌ Error: {e}")
+        await ctx.send(f"Error: {e}")
 
 # ====================== GAME COMMANDS ======================
 
@@ -57,7 +56,7 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="play", description="Choose stat only (no card_index)")
+@bot.tree.command(name="play", description="Choose stat only")
 @app_commands.describe(stat="Stat to battle with")
 @app_commands.choices(stat=[
     app_commands.Choice(name="Strength", value="Strength"),
