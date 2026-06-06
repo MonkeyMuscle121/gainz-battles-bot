@@ -10,9 +10,10 @@ class GainzBattlesGame:
         self.played_cards = {}
         self.max_players = 4
         self.round_number = 0
+        self.game_active = True
 
     def add_player(self, player_id, name):
-        if len(self.players) >= self.max_players:
+        if len(self.players) >= self.max_players or not self.game_active:
             return False
         if player_id in self.players:
             return False
@@ -22,6 +23,13 @@ class GainzBattlesGame:
             "lives": True
         }
         return True
+
+    def reset_game(self):
+        self.players = {}
+        self.current_leader = None
+        self.played_cards = {}
+        self.round_number = 0
+        self.game_active = True
 
     def start_game(self):
         if len(self.players) < 2:
@@ -34,7 +42,7 @@ class GainzBattlesGame:
         card_index = 0
         for pid, player in self.players.items():
             player["cards"] = []
-            for _ in range(4):
+            for _ in range(4):   # 4 cards each
                 if card_index < len(all_cards):
                     card_name, card_data = all_cards[card_index]
                     player["cards"].append((card_name, card_data.copy()))
@@ -45,7 +53,6 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Prepare cards for the round - no auto display"""
         self.played_cards = {}
 
         for pid, player in self.players.items():
@@ -55,7 +62,6 @@ class GainzBattlesGame:
             self.played_cards[pid] = card
 
     async def show_card(self, interaction: discord.Interaction):
-        """ /card command """
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
             return
@@ -93,8 +99,12 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
+        # Reminder for next round
+        await interaction.followup.send("**All players:** Type `/card` to see your next round card!")
+
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
+            self.reset_game()   # Reset for new game
