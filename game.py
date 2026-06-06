@@ -1,7 +1,7 @@
 # game.py
 import random
 import discord
-from cards import get_random_card, MONKEY_CARDS
+from cards import MONKEY_CARDS
 
 class GainzBattlesGame:
     def __init__(self):
@@ -45,17 +45,18 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Deal one card from each player's hand - show only leader's card automatically"""
+        """Deal one card from each player's hand"""
         self.played_cards = {}
 
         for pid, player in self.players.items():
             if not player["cards"]:
                 continue
 
-            card = player["cards"].pop(0)   # Take from personal hand
+            # Pop one card from the player's personal hand
+            card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # ONLY show the leader their own card automatically
+            # ONLY show the leader their OWN card
             if pid == self.current_leader:
                 embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
                 embed.set_image(url=card[1]["image"])
@@ -66,7 +67,7 @@ class GainzBattlesGame:
                     pass
 
     async def show_card(self, interaction: discord.Interaction):
-        """/card command for other players"""
+        """ /card command for other players """
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
             return
