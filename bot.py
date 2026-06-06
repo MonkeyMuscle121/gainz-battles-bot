@@ -15,19 +15,16 @@ games = {}
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
-# ====================== RESET COMMANDS ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 Clearing and resetting all commands...")
+    await ctx.send("🔄 Resetting commands...")
     try:
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ **Commands reset!**\n\nFully close and reopen Discord app, then wait 30 seconds.")
+        await ctx.send("✅ Commands reset! Restart Discord.")
     except Exception as e:
         await ctx.send(f"Error: {e}")
-
-# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -57,7 +54,7 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="card", description="View your current round card (ephemeral)")
+@bot.tree.command(name="card", description="View your current round card")
 async def card(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
     if not game:
@@ -82,15 +79,23 @@ async def play(interaction: discord.Interaction, stat: str):
         return
     await game.play_card(interaction, stat)
 
-@bot.tree.command(name="leaderboard", description="Show leaderboard")
+@bot.tree.command(name="leaderboard", description="Show current card count")
 async def leaderboard(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
     if not game:
         await interaction.response.send_message("No game running!", ephemeral=True)
         return
+    
     embed = discord.Embed(title="💪 $GAINZ BATTLES Leaderboard", color=0xFFD700)
-    for p in game.players.values():
-        embed.add_field(name=p["name"], value=f"Cards: {len(p['cards'])}", inline=False)
+    sorted_players = sorted(game.players.values(), key=lambda p: len(p['cards']), reverse=True)
+    
+    for p in sorted_players:
+        card_count = len(p['cards'])
+        embed.add_field(
+            name=f"{p['name']}",
+            value=f"**{card_count} cards** {'👑' if p['name'] == game.players[game.current_leader]['name'] else ''}",
+            inline=False
+        )
     await interaction.response.send_message(embed=embed)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
