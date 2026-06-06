@@ -10,10 +10,10 @@ class GainzBattlesGame:
         self.played_cards = {}
         self.max_players = 4
         self.round_number = 0
-        self.game_active = True
+        self.viewed_cards = set()   # Track who has used /card
 
     def add_player(self, player_id, name):
-        if len(self.players) >= self.max_players or not self.game_active:
+        if len(self.players) >= self.max_players:
             return False
         if player_id in self.players:
             return False
@@ -24,25 +24,17 @@ class GainzBattlesGame:
         }
         return True
 
-    def reset_game(self):
-        self.players = {}
-        self.current_leader = None
-        self.played_cards = {}
-        self.round_number = 0
-        self.game_active = True
-
     def start_game(self):
         if len(self.players) < 2:
             return False
 
-        # Distribute 4 unique cards to each player
         all_cards = list(MONKEY_CARDS.items())
         random.shuffle(all_cards)
 
         card_index = 0
         for pid, player in self.players.items():
             player["cards"] = []
-            for _ in range(4):   # 4 cards each
+            for _ in range(4):
                 if card_index < len(all_cards):
                     card_name, card_data = all_cards[card_index]
                     player["cards"].append((card_name, card_data.copy()))
@@ -50,10 +42,12 @@ class GainzBattlesGame:
 
         self.current_leader = random.choice(list(self.players.keys()))
         self.round_number = 1
+        self.viewed_cards = set()
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
         self.played_cards = {}
+        self.viewed_cards = set()   # Reset viewed status each round
 
         for pid, player in self.players.items():
             if not player["cards"]:
@@ -72,6 +66,8 @@ class GainzBattlesGame:
         embed.add_field(name=card[0], value="This is your card for this round", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+        self.viewed_cards.add(interaction.user.id)
+
     async def play_card(self, interaction: discord.Interaction, stat: str):
         await interaction.response.defer()
 
@@ -79,7 +75,12 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
             return
 
-        await interaction.followup.send(f"**Round {self.round_number}** — Stat Chosen: **{stat}**")
+        # Check if all players have viewed their card
+        if len(self.viewed_cards) < len(self.players):
+            await interaction.followup.send("❌ All players must use `/card` first before you can play!", ephemeral=True)
+            return
+
+        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**")
 
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
@@ -98,8 +99,8 @@ class GainzBattlesGame:
         self.current_leader = winner_id
         self.played_cards.clear()
         self.round_number += 1
+        self.viewed_cards = set()
 
-        # Reminder for next round
         await interaction.followup.send("**All players:** Type `/card` to see your next round card!")
 
         await self.deal_round_cards(interaction)
@@ -107,4 +108,3 @@ class GainzBattlesGame:
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
-            self.reset_game()   # Reset for new game
