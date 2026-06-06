@@ -27,10 +27,11 @@ class GainzBattlesGame:
         if len(self.players) < 2:
             return False
 
-        # Distribute 4 unique cards to each player from the full pool
+        # Create pool of all 28 cards
         all_cards = list(MONKEY_CARDS.items())
         random.shuffle(all_cards)
 
+        # Give 4 unique cards to each player
         card_index = 0
         for pid, player in self.players.items():
             player["cards"] = []
@@ -52,11 +53,11 @@ class GainzBattlesGame:
             if not player["cards"]:
                 continue
 
-            # Take one card from player's own hand
-            card = player["cards"].pop(0)   # or random if you prefer
+            # Take the first card from player's hand (or random)
+            card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # Auto show only to leader
+            # Auto show only to the leader
             if pid == self.current_leader:
                 embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
                 embed.set_image(url=card[1]["image"])
@@ -67,7 +68,6 @@ class GainzBattlesGame:
                     pass
 
     async def show_card(self, interaction: discord.Interaction):
-        """/card command"""
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
             return
