@@ -1,7 +1,7 @@
 # game.py
 import random
 import discord
-from cards import get_random_card
+from cards import MONKEY_CARDS
 
 class GainzBattlesGame:
     def __init__(self):
@@ -10,49 +10,53 @@ class GainzBattlesGame:
         self.played_cards = {}
         self.max_players = 4
         self.round_number = 0
-        self.game_active = True
 
     def add_player(self, player_id, name):
-        if not self.game_active:
-            self.reset_game()
         if len(self.players) >= self.max_players:
             return False
         if player_id in self.players:
             return False
         self.players[player_id] = {
             "name": name,
-            "cards": [get_random_card() for _ in range(4)],
+            "cards": [],
             "lives": True
         }
         return True
 
-    def reset_game(self):
-        self.players = {}
-        self.current_leader = None
-        self.played_cards = {}
-        self.round_number = 0
-        self.game_active = True
-
     def start_game(self):
         if len(self.players) < 2:
             return False
+
+        # Distribute 4 unique cards to each player from the full pool
+        all_cards = list(MONKEY_CARDS.items())
+        random.shuffle(all_cards)
+
+        card_index = 0
+        for pid, player in self.players.items():
+            player["cards"] = []
+            for _ in range(4):
+                if card_index < len(all_cards):
+                    card_name, card_data = all_cards[card_index]
+                    player["cards"].append((card_name, card_data.copy()))
+                    card_index += 1
+
         self.current_leader = random.choice(list(self.players.keys()))
         self.round_number = 1
-        self.game_active = True
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
+        """Pop one card from each player's personal hand"""
         self.played_cards = {}
 
         for pid, player in self.players.items():
             if not player["cards"]:
                 continue
 
-            card_index = random.randint(0, len(player["cards"]) - 1)
-            card = player["cards"].pop(card_index)
+            # Take one card from player's own hand
+            card = player["cards"].pop(0)   # or random if you prefer
             self.played_cards[pid] = card
 
-            # Auto show only to current leader
+            # Auto show only to leader
             if pid == self.current_leader:
                 embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
                 embed.set_image(url=card[1]["image"])
@@ -63,6 +67,7 @@ class GainzBattlesGame:
                     pass
 
     async def show_card(self, interaction: discord.Interaction):
+        """/card command"""
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
             return
@@ -100,12 +105,8 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
-        # Deal cards for next round
         await self.deal_round_cards(interaction)
 
-        # Check if game is over
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
-            self.game_active = False
-            await interaction.followup.send("🔄 Game has ended. Use `/join` to start a new game!")
