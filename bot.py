@@ -15,15 +15,15 @@ games = {}
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
-# ====================== RESET ======================
+# ====================== RESET COMMANDS ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 **Full command reset in progress...**")
+    await ctx.send("🔄 Clearing and resetting all commands...")
     try:
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ **Commands fully reset!**\n\n**Please:**\n1. Completely close Discord (task manager)\n2. Reopen Discord\n3. Wait 30 seconds")
+        await ctx.send("✅ **Commands reset!**\n\nFully close and reopen Discord app, then wait 30 seconds.")
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
@@ -48,23 +48,22 @@ async def start(interaction: discord.Interaction):
         return
     game = games[channel_id]
     if game.start_game():
-        await interaction.response.send_message(f"🎮 **$GAINZ BATTLES STARTED!**\nFirst leader: **{game.players[game.current_leader]['name']}**\n\n**All players:** Type `/card` to see your round card!")
+        await interaction.response.send_message(
+            f"🎮 **$GAINZ BATTLES STARTED!**\n"
+            f"First leader: **{game.players[game.current_leader]['name']}**\n\n"
+            f"**All players:** Type `/card` to see your round card!"
+        )
         await game.deal_round_cards(interaction)
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-@bot.tree.command(name="card", description="View your current round card")
+@bot.tree.command(name="card", description="View your current round card (ephemeral)")
 async def card(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
-    if not game or interaction.user.id not in game.played_cards:
-        await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
+    if not game:
+        await interaction.response.send_message("No game running!", ephemeral=True)
         return
-    
-    card = game.played_cards[interaction.user.id]
-    embed = discord.Embed(title=f"Round {game.round_number} • Your Card", color=0x00FF00)
-    embed.set_image(url=card[1]["image"])
-    embed.add_field(name=card[0], value="This is your card for this round", inline=False)
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await game.show_card(interaction)
 
 @bot.tree.command(name="play", description="Choose stat (Leader only)")
 @app_commands.describe(stat="Stat to battle with")
