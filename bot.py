@@ -1,123 +1,97 @@
-# game.py
-import random
+# bot.py
 import discord
-import asyncio
-from cards import get_random_card, MONKEY_CARDS
+from discord import app_commands
+from discord.ext import commands
+import os
+from game import GainzBattlesGame
 
-class GainzBattlesGame:
-    def __init__(self):
-        self.players = {}
-        self.current_leader = None
-        self.played_cards = {}
-        self.max_players = 4
-        self.round_number = 0
-        self.timer_task = None
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-    def add_player(self, player_id, name):
-        if len(self.players) >= self.max_players:
-            return False
-        if player_id in self.players:
-            return False
-        self.players[player_id] = {
-            "name": name,
-            "cards": [get_random_card() for _ in range(4)],
-            "lives": True
-        }
-        return True
+games = {}
 
-    def add_test_player(self):
-        if len(self.players) >= self.max_players:
-            return False
-        test_id = 999999999
-        self.players[test_id] = {
-            "name": "🤖 Test Player",
-            "cards": [get_random_card() for _ in range(4)],
-            "lives": True
-        }
-        return True
+@bot.event
+async def on_ready():
+    print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
-    def start_game(self):
-        if len(self.players) < 2:
-            return False
-        self.current_leader = random.choice(list(self.players.keys()))
-        self.round_number = 1
-        return True
+# ====================== RESET ======================
+@bot.command(name="resetcommands")
+async def resetcommands(ctx):
+    await ctx.send("🔄 **Full command reset in progress...**")
+    try:
+        bot.tree.clear_commands(guild=ctx.guild)
+        await bot.tree.sync(guild=ctx.guild)
+        await bot.tree.sync()
+        await ctx.send("✅ **Commands fully reset!**\n\n**Please:**\n1. Completely close Discord (task manager)\n2. Reopen Discord\n3. Wait 30 seconds")
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
 
-    async def deal_round_cards(self, interaction: discord.Interaction):
-        self.played_cards = {}
-        available = list(MONKEY_CARDS.items())
-        random.shuffle(available)
+# ====================== GAME COMMANDS ======================
 
-        for i, pid in enumerate(self.players.keys()):
-            player = self.players[pid]
-            if not player["cards"]:
-                continue
-            card_name, card_data = available[i % len(available)]
-            self.played_cards[pid] = (card_name, card_data.copy())
+@bot.tree.command(name="join", description="Join the game")
+async def join(interaction: discord.Interaction):
+    channel_id = interaction.channel.id
+    if channel_id not in games:
+        games[channel_id] = GainzBattlesGame()
+    game = games[channel_id]
+    if game.add_player(interaction.user.id, interaction.user.display_name):
+        await interaction.response.send_message(f"💪 {interaction.user.mention} joined! ({len(game.players)}/4)")
+    else:
+        await interaction.response.send_message("Game full or already joined!", ephemeral=True)
 
-            embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
-            embed.set_image(url=card_data["image"])
-            embed.add_field(name=card_name, value="This is your card for this round", inline=False)
+@bot.tree.command(name="start", description="Start the game")
+async def start(interaction: discord.Interaction):
+    channel_id = interaction.channel.id
+    if channel_id not in games:
+        await interaction.response.send_message("Use `/join` first!", ephemeral=True)
+        return
+    game = games[channel_id]
+    if game.start_game():
+        await interaction.response.send_message(f"🎮 **$GAINZ BATTLES STARTED!**\nFirst leader: **{game.players[game.current_leader]['name']}**\n\n**All players:** Type `/card` to see your round card!")
+        await game.deal_round_cards(interaction)
+    else:
+        await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-            try:
-                await interaction.followup.send(embed=embed, ephemeral=True)
-            except:
-                pass
+@bot.tree.command(name="card", description="View your current round card")
+async def card(interaction: discord.Interaction):
+    game = games.get(interaction.channel.id)
+    if not game or interaction.user.id not in game.played_cards:
+        await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
+        return
+    
+    card = game.played_cards[interaction.user.id]
+    embed = discord.Embed(title=f"Round {game.round_number} • Your Card", color=0x00FF00)
+    embed.set_image(url=card[1]["image"])
+    embed.add_field(name=card[0], value="This is your card for this round", inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
-        # Start 2-minute timer for leader
-        if self.timer_task:
-            self.timer_task.cancel()
-        self.timer_task = asyncio.create_task(self.auto_play_timer(interaction))
+@bot.tree.command(name="play", description="Choose stat (Leader only)")
+@app_commands.describe(stat="Stat to battle with")
+@app_commands.choices(stat=[
+    app_commands.Choice(name="Strength", value="Strength"),
+    app_commands.Choice(name="Agility", value="Agility"),
+    app_commands.Choice(name="Intelligence", value="Intelligence"),
+    app_commands.Choice(name="Cuteness", value="Cuteness"),
+    app_commands.Choice(name="Volume", value="Volume"),
+    app_commands.Choice(name="Banana Affinity", value="Banana Affinity")
+])
+async def play(interaction: discord.Interaction, stat: str):
+    game = games.get(interaction.channel.id)
+    if not game:
+        await interaction.response.send_message("No game running!", ephemeral=True)
+        return
+    await game.play_card(interaction, stat)
 
-    async def auto_play_timer(self, interaction: discord.Interaction):
-        try:
-            await asyncio.sleep(120)  # 2 minutes
-            if self.played_cards and self.current_leader not in [list(self.played_cards.keys())[0] if self.played_cards else None]:
-                # Auto choose random stat
-                stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
-                auto_stat = random.choice(stats)
-                await interaction.channel.send(f"⏰ Time's up! Auto-playing with **{auto_stat}**")
-                # Trigger play with auto stat
-                await self.play_card_auto(auto_stat)
-        except asyncio.CancelledError:
-            pass
+@bot.tree.command(name="leaderboard", description="Show leaderboard")
+async def leaderboard(interaction: discord.Interaction):
+    game = games.get(interaction.channel.id)
+    if not game:
+        await interaction.response.send_message("No game running!", ephemeral=True)
+        return
+    embed = discord.Embed(title="💪 $GAINZ BATTLES Leaderboard", color=0xFFD700)
+    for p in game.players.values():
+        embed.add_field(name=p["name"], value=f"Cards: {len(p['cards'])}", inline=False)
+    await interaction.response.send_message(embed=embed)
 
-    async def play_card_auto(self, stat: str):
-        # This would need interaction, simplified version
-        pass  # We'll handle in main play_card for now
-
-    async def play_card(self, interaction: discord.Interaction, stat: str):
-        await interaction.response.defer()
-
-        if interaction.user.id != self.current_leader:
-            await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
-            return
-
-        if self.timer_task:
-            self.timer_task.cancel()
-
-        await interaction.followup.send(f"**Round {self.round_number}** — Stat Chosen: **{stat}**")
-
-        for pid, card in self.played_cards.items():
-            player_name = self.players[pid]["name"]
-            embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
-            embed.set_image(url=card[1]["image"])
-            await interaction.followup.send(embed=embed)
-
-        winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
-        winner_name = self.players[winner_id]["name"]
-
-        won_cards = list(self.played_cards.values())
-        self.players[winner_id]["cards"].extend(won_cards)
-
-        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
-
-        self.current_leader = winner_id
-        self.played_cards.clear()
-        self.round_number += 1
-
-        await self.deal_round_cards(interaction)
-
-        remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
-        if len(remaining) <= 1:
-            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
+bot.run(os.getenv("DISCORD_TOKEN"))
