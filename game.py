@@ -10,11 +10,11 @@ class GainzBattlesGame:
         self.played_cards = {}
         self.max_players = 4
         self.round_number = 0
-        self.game_over = False
+        self.game_active = True
 
     def add_player(self, player_id, name):
-        if self.game_over:
-            self.reset_game()  # Auto reset if previous game ended
+        if not self.game_active:
+            self.reset_game()
         if len(self.players) >= self.max_players:
             return False
         if player_id in self.players:
@@ -27,19 +27,18 @@ class GainzBattlesGame:
         return True
 
     def reset_game(self):
-        """Reset for new game"""
         self.players = {}
         self.current_leader = None
         self.played_cards = {}
         self.round_number = 0
-        self.game_over = False
+        self.game_active = True
 
     def start_game(self):
         if len(self.players) < 2:
             return False
         self.current_leader = random.choice(list(self.players.keys()))
         self.round_number = 1
-        self.game_over = False
+        self.game_active = True
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
@@ -53,7 +52,7 @@ class GainzBattlesGame:
             card = player["cards"].pop(card_index)
             self.played_cards[pid] = card
 
-            # Auto show only to leader
+            # Auto show only to current leader
             if pid == self.current_leader:
                 embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
                 embed.set_image(url=card[1]["image"])
@@ -101,14 +100,12 @@ class GainzBattlesGame:
         self.played_cards.clear()
         self.round_number += 1
 
+        # Deal cards for next round
         await self.deal_round_cards(interaction)
 
-        # Game over check + auto reset
+        # Check if game is over
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
-            self.game_over = True
-            # Auto reset for new game
-            await interaction.followup.send("🔄 Game has been reset. Use `/join` to start a new game!")
-
-    # Keep your existing show_card and other methods
+            self.game_active = False
+            await interaction.followup.send("🔄 Game has ended. Use `/join` to start a new game!")
