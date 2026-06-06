@@ -45,29 +45,17 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Deal one card from each player's hand"""
+        """Prepare cards for the round - no auto display"""
         self.played_cards = {}
 
         for pid, player in self.players.items():
             if not player["cards"]:
                 continue
-
-            # Pop one card from the player's personal hand
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # ONLY show the leader their OWN card
-            if pid == self.current_leader:
-                embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
-                embed.set_image(url=card[1]["image"])
-                embed.add_field(name=card[0], value="This is your card for this round", inline=False)
-                try:
-                    await interaction.followup.send(embed=embed, ephemeral=True)
-                except:
-                    pass
-
     async def show_card(self, interaction: discord.Interaction):
-        """ /card command for other players """
+        """ /card command """
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
             return
