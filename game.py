@@ -13,6 +13,7 @@ class GainzBattlesGame:
         self.round_number = 0
         self.viewed_cards = set()
         self.game_active = True
+        self.inactivity_task = None
 
     def add_player(self, player_id, name):
         if not self.game_active or len(self.players) >= self.max_players:
@@ -27,6 +28,8 @@ class GainzBattlesGame:
         return True
 
     def reset_game(self):
+        if self.inactivity_task:
+            self.inactivity_task.cancel()
         self.players = {}
         self.current_leader = None
         self.played_cards = {}
@@ -54,11 +57,27 @@ class GainzBattlesGame:
         self.round_number = 1
         self.viewed_cards = set()
         self.game_active = True
+        self._start_inactivity_timer()
         return True
+
+    def _start_inactivity_timer(self):
+        if self.inactivity_task:
+            self.inactivity_task.cancel()
+        self.inactivity_task = asyncio.create_task(self._inactivity_check())
+
+    async def _inactivity_check(self):
+        try:
+            await asyncio.sleep(600)  # 10 minutes
+            if self.game_active and self.players:
+                self.reset_game()
+                # Note: channel send would require passing channel reference, simplified for now
+        except asyncio.CancelledError:
+            pass
 
     async def deal_round_cards(self, interaction: discord.Interaction):
         self.played_cards = {}
         self.viewed_cards = set()
+        self._start_inactivity_timer()
 
         for pid, player in self.players.items():
             if not player["cards"]:
@@ -97,6 +116,8 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ All players must use `/card` first!", ephemeral=True)
             return
 
+        self._start_inactivity_timer()
+
         await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
 
         await asyncio.sleep(5)
@@ -109,27 +130,13 @@ class GainzBattlesGame:
 
         await asyncio.sleep(10)
 
-        # Winner + Savage Roast
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
-
-        roast_lines = [
-            "got absolutely BODIED 💀",
-            "is built like a wet noodle compared to the winner",
-            "should stick to peeling bananas",
-            "just got sent to the zoo",
-            "is crying in the corner eating reject bananas",
-            "needs to hit the gym... or at least stop lifting twigs",
-            "is the definition of 'all talk, no gains'"
-        ]
-
-        roast = random.choice(roast_lines)
 
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
-                                        f"The rest of you {roast}")
+        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
 
         self.current_leader = winner_id
         self.played_cards.clear()
@@ -142,9 +149,7 @@ class GainzBattlesGame:
 
         await self.deal_round_cards(interaction)
 
-        # Game Over + Final Savage Roast
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
-                                            f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
+            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
             self.reset_game()
