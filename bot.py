@@ -15,15 +15,15 @@ games = {}
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
-# ====================== RESET COMMANDS ======================
+# ====================== RESET ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 Resetting all commands...")
+    await ctx.send("🔄 Resetting commands...")
     try:
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ Commands reset! Fully close and reopen Discord.")
+        await ctx.send("✅ Commands reset! Restart Discord app.")
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
@@ -46,11 +46,11 @@ async def start(interaction: discord.Interaction):
     if channel_id not in games:
         games[channel_id] = GainzBattlesGame()
     game = games[channel_id]
-    
-    if len(game.players) > 0:  # Game already active
+
+    if game.players and game.current_leader is not None:
         await interaction.response.send_message("❌ A game is already running! Wait for it to finish.", ephemeral=True)
         return
-    
+
     if game.start_game():
         leader_name = game.players[game.current_leader]['name']
         await interaction.response.send_message(
@@ -60,7 +60,7 @@ async def start(interaction: discord.Interaction):
         )
         await game.deal_round_cards(interaction)
     else:
-        await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
+        await interaction.response.send_message("Need at least 2 players to start!", ephemeral=True)
 
 @bot.tree.command(name="card", description="View your current round card")
 async def card(interaction: discord.Interaction):
