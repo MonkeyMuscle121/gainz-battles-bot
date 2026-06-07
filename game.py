@@ -13,7 +13,6 @@ class GainzBattlesGame:
         self.round_number = 0
         self.viewed_cards = set()
         self.game_active = True
-        self.inactivity_task = None
 
     def add_player(self, player_id, name):
         if not self.game_active or len(self.players) >= self.max_players:
@@ -34,14 +33,11 @@ class GainzBattlesGame:
         self.round_number = 0
         self.viewed_cards = set()
         self.game_active = True
-        if self.inactivity_task:
-            self.inactivity_task.cancel()
 
     def start_game(self):
         if len(self.players) < 2:
             return False
 
-        # Distribute 5 unique cards to each player
         all_cards = list(MONKEY_CARDS.items())
         random.shuffle(all_cards)
 
@@ -58,27 +54,11 @@ class GainzBattlesGame:
         self.round_number = 1
         self.viewed_cards = set()
         self.game_active = True
-        self._start_inactivity_timer()
         return True
-
-    def _start_inactivity_timer(self):
-        if self.inactivity_task:
-            self.inactivity_task.cancel()
-        self.inactivity_task = asyncio.create_task(self._inactivity_check())
-
-    async def _inactivity_check(self):
-        try:
-            await asyncio.sleep(600)  # 10 minutes
-            if self.game_active and self.players:
-                # This would need a channel reference - simplified
-                self.reset_game()
-        except asyncio.CancelledError:
-            pass
 
     async def deal_round_cards(self, interaction: discord.Interaction):
         self.played_cards = {}
         self.viewed_cards = set()
-        self._start_inactivity_timer()
 
         for pid, player in self.players.items():
             if not player["cards"]:
@@ -119,15 +99,17 @@ class GainzBattlesGame:
 
         await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
 
-        # 5 second delay
-        await asyncio.sleep(5)
-
+        # Show all cards
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
             embed.set_image(url=card[1]["image"])
             await interaction.followup.send(embed=embed)
 
+        # 6 second delay before winner announcement
+        await asyncio.sleep(6)
+
+        # Winner announcement
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
 
