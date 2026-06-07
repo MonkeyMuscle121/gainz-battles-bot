@@ -38,7 +38,6 @@ class GainzBattlesGame:
         if len(self.players) < 2:
             return False
 
-        # Distribute 5 unique cards to each player
         all_cards = list(MONKEY_CARDS.items())
         random.shuffle(all_cards)
 
@@ -98,45 +97,54 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ All players must use `/card` first!", ephemeral=True)
             return
 
-        # Stat chosen message
         await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
 
-        # 5 second delay before showing cards
         await asyncio.sleep(5)
 
-        # Reveal all cards
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
             embed.set_image(url=card[1]["image"])
             await interaction.followup.send(embed=embed)
 
-        # 10 second delay before winner announcement
         await asyncio.sleep(10)
 
-        # Determine winner
+        # Winner + Savage Roast
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
+
+        roast_lines = [
+            "got absolutely BODIED 💀",
+            "is built like a wet noodle compared to the winner",
+            "should stick to peeling bananas",
+            "just got sent to the zoo",
+            "is crying in the corner eating reject bananas",
+            "needs to hit the gym... or at least stop lifting twigs",
+            "is the definition of 'all talk, no gains'"
+        ]
+
+        roast = random.choice(roast_lines)
 
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
+        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
+                                        f"The rest of you {roast}")
 
         self.current_leader = winner_id
         self.played_cards.clear()
         self.round_number += 1
         self.viewed_cards = set()
 
-        # 5 second delay before next round prompt
         await asyncio.sleep(5)
 
         await interaction.followup.send("**All players:** Type `/card` to see your next round card!")
 
         await self.deal_round_cards(interaction)
 
-        # Game over check + reset
+        # Game Over + Final Savage Roast
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
+            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
+                                            f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
             self.reset_game()
