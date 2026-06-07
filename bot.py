@@ -15,16 +15,19 @@ games = {}
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
+# ====================== RESET COMMANDS ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 Resetting commands...")
+    await ctx.send("🔄 Resetting all commands...")
     try:
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ Commands reset!")
+        await ctx.send("✅ Commands reset! Fully close and reopen Discord.")
     except Exception as e:
         await ctx.send(f"Error: {e}")
+
+# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -41,9 +44,13 @@ async def join(interaction: discord.Interaction):
 async def start(interaction: discord.Interaction):
     channel_id = interaction.channel.id
     if channel_id not in games:
-        await interaction.response.send_message("Use `/join` first!", ephemeral=True)
-        return
+        games[channel_id] = GainzBattlesGame()
     game = games[channel_id]
+    
+    if len(game.players) > 0:  # Game already active
+        await interaction.response.send_message("❌ A game is already running! Wait for it to finish.", ephemeral=True)
+        return
+    
     if game.start_game():
         leader_name = game.players[game.current_leader]['name']
         await interaction.response.send_message(
