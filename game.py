@@ -11,10 +11,9 @@ class GainzBattlesGame:
         self.max_players = 4
         self.round_number = 0
         self.viewed_cards = set()
-        self.game_active = True
 
     def add_player(self, player_id, name):
-        if not self.game_active or len(self.players) >= self.max_players:
+        if len(self.players) >= self.max_players:
             return False
         if player_id in self.players:
             return False
@@ -24,14 +23,6 @@ class GainzBattlesGame:
             "lives": True
         }
         return True
-
-    def reset_game(self):
-        self.players = {}
-        self.current_leader = None
-        self.played_cards = {}
-        self.round_number = 0
-        self.viewed_cards = set()
-        self.game_active = True
 
     def start_game(self):
         if len(self.players) < 2:
@@ -44,7 +35,7 @@ class GainzBattlesGame:
         card_index = 0
         for pid, player in self.players.items():
             player["cards"] = []
-            for _ in range(5):   # ← Changed to 5 cards
+            for _ in range(5):
                 if card_index < len(all_cards):
                     card_name, card_data = all_cards[card_index]
                     player["cards"].append((card_name, card_data.copy()))
@@ -53,7 +44,6 @@ class GainzBattlesGame:
         self.current_leader = random.choice(list(self.players.keys()))
         self.round_number = 1
         self.viewed_cards = set()
-        self.game_active = True
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
@@ -78,6 +68,14 @@ class GainzBattlesGame:
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
         self.viewed_cards.add(interaction.user.id)
+
+        # Check if all players have viewed their card
+        if len(self.viewed_cards) == len(self.players):
+            leader_name = self.players[self.current_leader]['name']
+            await interaction.followup.send(
+                f"✅ **All users have now seen their cards.**\n"
+                f"The lead player **{leader_name}** choose your stat with `/play`"
+            )
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
         await interaction.response.defer()
@@ -115,8 +113,6 @@ class GainzBattlesGame:
 
         await self.deal_round_cards(interaction)
 
-        # Game over check + auto reset
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
-            self.reset_game()
