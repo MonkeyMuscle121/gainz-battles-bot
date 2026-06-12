@@ -18,12 +18,12 @@ async def on_ready():
 # ====================== RESET ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 Resetting commands...")
+    await ctx.send("🔄 Resetting all commands...")
     try:
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ Commands reset! Restart Discord app.")
+        await ctx.send("✅ Commands reset! Fully close and reopen Discord.")
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
@@ -95,7 +95,12 @@ async def leaderboard(interaction: discord.Interaction):
         return
     embed = discord.Embed(title="💪 $GAINZ BATTLES Leaderboard", color=0xFFD700)
     for p in game.players.values():
-        embed.add_field(name=p["name"], value=f"Cards: {len(p['cards'])}", inline=False)
+        status = " ❌" if len(p["cards"]) == 0 else ""
+        embed.add_field(
+            name=f"{p['name']}{status}",
+            value=f"Cards: {len(p['cards'])}",
+            inline=False
+        )
     await interaction.response.send_message(embed=embed)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
