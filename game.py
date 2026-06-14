@@ -54,7 +54,7 @@ class GainzBattlesGame:
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Auto show each player ONLY their own card ephemerally"""
+        """Try to show each player only their own card ephemerally"""
         self.played_cards = {}
 
         for pid, player in self.players.items():
@@ -63,12 +63,12 @@ class GainzBattlesGame:
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # Show ONLY this player's card to them
             embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
             embed.set_image(url=card[1]["image"])
             embed.add_field(name=card[0], value="This is your card for this round", inline=False)
 
             try:
+                # Send ephemeral - best effort
                 await interaction.followup.send(embed=embed, ephemeral=True)
             except:
                 pass
