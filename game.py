@@ -38,6 +38,7 @@ class GainzBattlesGame:
         if len(self.players) < 2:
             return False
 
+        # Distribute 5 unique cards to each player
         all_cards = list(MONKEY_CARDS.items())
         random.shuffle(all_cards)
 
@@ -101,17 +102,13 @@ class GainzBattlesGame:
 
         await asyncio.sleep(5)
 
-        # Reveal cards
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
             embed.set_image(url=card[1]["image"])
             await interaction.followup.send(embed=embed)
 
-        # Dynamic delay based on number of players
-        num_players = len(self.played_cards)
-        delay = num_players * 3  # 3 seconds per player
-        await asyncio.sleep(delay)
+        await asyncio.sleep(5)
 
         # Winner + Savage Roast
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
@@ -133,6 +130,13 @@ class GainzBattlesGame:
 
         await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
                                         f"The rest of you {roast}")
+
+        # Auto Leaderboard
+        embed = discord.Embed(title="💪 $GAINZ BATTLES Leaderboard", color=0xFFD700)
+        for p in self.players.values():
+            status = " ❌" if len(p["cards"]) == 0 else ""
+            embed.add_field(name=f"{p['name']}{status}", value=f"Cards: {len(p['cards'])}", inline=False)
+        await interaction.followup.send(embed=embed)
 
         self.current_leader = winner_id
         self.played_cards.clear()
