@@ -121,7 +121,6 @@ class GainzBattlesGame:
 
         await asyncio.sleep(5)
 
-        # Winner + Savage Roast
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
 
