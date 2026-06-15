@@ -16,7 +16,6 @@ games = {}
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
 
-# ====================== RESET ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
     await ctx.send("🔄 Resetting commands...")
@@ -28,7 +27,6 @@ async def resetcommands(ctx):
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
-# ====================== JOIN + AUTO START ======================
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
     channel_id = interaction.channel.id
@@ -57,11 +55,9 @@ async def auto_start_game(channel_id, original_interaction):
                 await original_interaction.channel.send(
                     f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
                     f"First leader: **{leader_name}**\n\n"
-                    f"**Check your ephemeral card above**"
+                    f"**All players:** Type `/card` to see your round card!"
                 )
                 await game.deal_round_cards(original_interaction)
-
-# ====================== OTHER COMMANDS ======================
 
 @bot.tree.command(name="start", description="Manually start the game")
 async def start(interaction: discord.Interaction):
@@ -79,11 +75,19 @@ async def start(interaction: discord.Interaction):
         await interaction.response.send_message(
             f"🎮 **$GAINZ BATTLES STARTED!**\n"
             f"First leader: **{leader_name}**\n\n"
-            f"**Check your ephemeral card above**"
+            f"**All players:** Type `/card` to see your round card!"
         )
         await game.deal_round_cards(interaction)
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
+
+@bot.tree.command(name="card", description="View your current round card")
+async def card(interaction: discord.Interaction):
+    game = games.get(interaction.channel.id)
+    if not game:
+        await interaction.response.send_message("No game running!", ephemeral=True)
+        return
+    await game.show_card(interaction)
 
 @bot.tree.command(name="play", description="Choose stat (Leader only)")
 @app_commands.describe(stat="Stat to battle with")
