@@ -77,7 +77,7 @@ class GainzBattlesGame:
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # Auto show card for Test Player
+            # Auto view for Test Player
             if pid == 999999999:
                 self.viewed_cards.add(pid)
 
@@ -101,18 +101,25 @@ class GainzBattlesGame:
                 f"The lead player **{leader_name}** choose your stat with `/play`"
             )
 
-    async def play_card(self, interaction: discord.Interaction, stat: str):
+    async def play_card(self, interaction: discord.Interaction, stat: str = None):
         await interaction.response.defer()
 
-        if interaction.user.id != self.current_leader:
-            await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
-            return
+        # Auto-play for Test Player if it's their turn
+        if self.current_leader == 999999999:
+            stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
+            stat = random.choice(stats)
+            # Simulate the Test Player choosing
+            await interaction.followup.send(f"🤖 **Test Player** chose **{stat}**")
+        else:
+            if interaction.user.id != self.current_leader:
+                await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
+                return
 
-        if len(self.viewed_cards) < len([p for p in self.players.values() if len(p["cards"]) > 0]):
-            await interaction.followup.send("❌ All active players must use `/card` first!", ephemeral=True)
-            return
+            if len(self.viewed_cards) < len([p for p in self.players.values() if len(p["cards"]) > 0]):
+                await interaction.followup.send("❌ All active players must use `/card` first!", ephemeral=True)
+                return
 
-        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
+            await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
 
         await asyncio.sleep(5)
 
@@ -127,10 +134,22 @@ class GainzBattlesGame:
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
 
+        roast_lines = [
+            "got absolutely BODIED 💀",
+            "is built like a wet noodle",
+            "should stick to peeling bananas",
+            "just got sent to the zoo",
+            "is crying in the corner eating reject bananas",
+            "needs to hit the gym",
+            "is the definition of 'all talk, no gains'"
+        ]
+        roast = random.choice(roast_lines)
+
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
+        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
+                                        f"The rest of you {roast}")
 
         self.current_leader = winner_id
         self.played_cards.clear()
@@ -145,5 +164,6 @@ class GainzBattlesGame:
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
+            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
+                                            f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
             self.reset_game()
