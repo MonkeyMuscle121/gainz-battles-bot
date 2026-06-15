@@ -49,7 +49,6 @@ class GainzBattlesGame:
         if len(self.players) < 2:
             return False
 
-        # Distribute 5 unique cards to each player
         all_cards = list(MONKEY_CARDS.items())
         random.shuffle(all_cards)
 
@@ -77,6 +76,10 @@ class GainzBattlesGame:
                 continue
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
+
+            # Auto show card for Test Player
+            if pid == 999999999:
+                self.viewed_cards.add(pid)
 
     async def show_card(self, interaction: discord.Interaction):
         if interaction.user.id not in self.played_cards:
@@ -124,29 +127,10 @@ class GainzBattlesGame:
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
 
-        roast_lines = [
-            "got absolutely BODIED 💀",
-            "is built like a wet noodle",
-            "should stick to peeling bananas",
-            "just got sent to the zoo",
-            "is crying in the corner eating reject bananas",
-            "needs to hit the gym",
-            "is the definition of 'all talk, no gains'"
-        ]
-        roast = random.choice(roast_lines)
-
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
-                                        f"The rest of you {roast}")
-
-        # Auto Leaderboard
-        embed = discord.Embed(title="💪 $GAINZ BATTLES Leaderboard", color=0xFFD700)
-        for p in self.players.values():
-            status = " ❌" if len(p["cards"]) == 0 else ""
-            embed.add_field(name=f"{p['name']}{status}", value=f"Cards: {len(p['cards'])}", inline=False)
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
 
         self.current_leader = winner_id
         self.played_cards.clear()
@@ -161,6 +145,5 @@ class GainzBattlesGame:
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
-                                            f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
+            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
             self.reset_game()
