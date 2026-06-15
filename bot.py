@@ -15,17 +15,25 @@ games = {}
 @bot.event
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
+    print("Use !resetcommands to fix slash menu")
 
+# ====================== STRONG RESET ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 Resetting commands...")
+    await ctx.send("🔄 **Full reset in progress...**")
     try:
+        # Clear everything
         bot.tree.clear_commands(guild=ctx.guild)
-        await bot.tree.sync(guild=ctx.guild)
-        await bot.tree.sync()
-        await ctx.send("✅ Commands reset! Restart Discord app.")
+        
+        # Re-sync guild + global
+        guild_synced = await bot.tree.sync(guild=ctx.guild)
+        global_synced = await bot.tree.sync()
+        
+        await ctx.send(f"✅ **Full sync done!**\nGuild: {len(guild_synced)} | Global: {len(global_synced)}\n\n**Fully close and reopen Discord app**")
     except Exception as e:
         await ctx.send(f"Error: {e}")
+
+# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -46,7 +54,7 @@ async def join(interaction: discord.Interaction):
         await interaction.response.send_message("Game full or already joined!", ephemeral=True)
 
 async def auto_start_game(channel_id, original_interaction):
-    await asyncio.sleep(120)  # 2 minutes
+    await asyncio.sleep(120)
     if channel_id in games:
         game = games[channel_id]
         if len(game.players) >= 2 and game.current_leader is None:
