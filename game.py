@@ -67,7 +67,6 @@ class GainzBattlesGame:
             self.played_cards[pid] = card
 
     async def show_card(self, interaction: discord.Interaction):
-        """Each player calls this themselves - guarantees they see only their card"""
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
             return
@@ -83,8 +82,8 @@ class GainzBattlesGame:
         if len(self.viewed_cards) == len([p for p in self.players.values() if len(p["cards"]) > 0]):
             leader_name = self.players[self.current_leader]['name']
             await interaction.followup.send(
-                f"✅ **All active players have seen their cards.**\n"
-                f"**{leader_name}** - choose your stat with `/play`"
+                f"✅ **All active users have now seen their cards.**\n"
+                f"The lead player **{leader_name}** choose your stat with `/play`"
             )
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
@@ -98,25 +97,42 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ All active players must use `/card` first!", ephemeral=True)
             return
 
-        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll cards shown below...")
+        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
 
         await asyncio.sleep(5)
 
+        # Reveal cards
         for pid, card in self.played_cards.items():
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
             embed.set_image(url=card[1]["image"])
             await interaction.followup.send(embed=embed)
 
-        await asyncio.sleep(5)
+        # Dynamic delay based on number of players
+        num_players = len(self.played_cards)
+        delay = num_players * 3  # 3 seconds per player
+        await asyncio.sleep(delay)
 
+        # Winner + Savage Roast
         winner_id = max(self.played_cards.keys(), key=lambda pid: self.played_cards[pid][1].get(stat, 0))
         winner_name = self.players[winner_id]["name"]
+
+        roast_lines = [
+            "got absolutely BODIED 💀",
+            "is built like a wet noodle",
+            "should stick to peeling bananas",
+            "just got sent to the zoo",
+            "is crying in the corner eating reject bananas",
+            "needs to hit the gym",
+            "is the definition of 'all talk, no gains'"
+        ]
+        roast = random.choice(roast_lines)
 
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!")
+        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
+                                        f"The rest of you {roast}")
 
         self.current_leader = winner_id
         self.played_cards.clear()
@@ -131,5 +147,6 @@ class GainzBattlesGame:
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪")
+            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
+                                            f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
             self.reset_game()
