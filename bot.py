@@ -53,13 +53,17 @@ async def auto_start_game(channel_id, original_interaction):
     game = games[channel_id]
 
     if game.current_leader is not None:
-        return  # Already started
+        return
 
     if len(game.players) == 1:
         game.add_test_player()
         await original_interaction.channel.send("🤖 **Test Player** added automatically!")
 
     if game.start_game():
+        # Make sure the real player is leader if solo
+        real_player_id = [pid for pid in game.players if pid != 999999999][0]
+        game.current_leader = real_player_id
+
         leader_name = game.players[game.current_leader]['name']
         await original_interaction.channel.send(
             f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
@@ -84,6 +88,11 @@ async def start(interaction: discord.Interaction):
         await interaction.channel.send("🤖 **Test Player** added automatically!")
 
     if game.start_game():
+        # Prioritize real player as leader
+        real_players = [pid for pid in game.players if pid != 999999999]
+        if real_players:
+            game.current_leader = real_players[0]
+
         leader_name = game.players[game.current_leader]['name']
         await interaction.response.send_message(
             f"🎮 **$GAINZ BATTLES STARTED!**\n"
@@ -92,8 +101,9 @@ async def start(interaction: discord.Interaction):
         )
         await game.deal_round_cards(interaction)
     else:
-        await interaction.response.send_message("Need at least 1 player to start!", ephemeral=True)
+        await interaction.response.send_message("Need at least 1 player!", ephemeral=True)
 
+# Keep the rest of your commands (card, play, leaderboard)
 @bot.tree.command(name="card", description="View your current round card")
 async def card(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
