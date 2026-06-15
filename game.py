@@ -11,6 +11,7 @@ class GainzBattlesGame:
         self.played_cards = {}
         self.max_players = 4
         self.round_number = 0
+        self.viewed_cards = set()
         self.game_active = True
 
     def add_player(self, player_id, name):
@@ -30,6 +31,7 @@ class GainzBattlesGame:
         self.current_leader = None
         self.played_cards = {}
         self.round_number = 0
+        self.viewed_cards = set()
         self.game_active = True
 
     def start_game(self):
@@ -50,12 +52,13 @@ class GainzBattlesGame:
 
         self.current_leader = random.choice(list(self.players.keys()))
         self.round_number = 1
+        self.viewed_cards = set()
         self.game_active = True
         return True
 
     async def deal_round_cards(self, interaction: discord.Interaction):
-        """Try to show each player only their own card ephemerally"""
         self.played_cards = {}
+        self.viewed_cards = set()
 
         for pid, player in self.players.items():
             if not player["cards"]:
@@ -63,15 +66,26 @@ class GainzBattlesGame:
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
-            embed.set_image(url=card[1]["image"])
-            embed.add_field(name=card[0], value="This is your card for this round", inline=False)
+    async def show_card(self, interaction: discord.Interaction):
+        """Each player calls this themselves - guarantees they see only their card"""
+        if interaction.user.id not in self.played_cards:
+            await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
+            return
 
-            try:
-                # Send ephemeral - best effort
-                await interaction.followup.send(embed=embed, ephemeral=True)
-            except:
-                pass
+        card = self.played_cards[interaction.user.id]
+        embed = discord.Embed(title=f"Round {self.round_number} • Your Card", color=0x00FF00)
+        embed.set_image(url=card[1]["image"])
+        embed.add_field(name=card[0], value="This is your card for this round", inline=False)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        self.viewed_cards.add(interaction.user.id)
+
+        if len(self.viewed_cards) == len([p for p in self.players.values() if len(p["cards"]) > 0]):
+            leader_name = self.players[self.current_leader]['name']
+            await interaction.followup.send(
+                f"✅ **All active players have seen their cards.**\n"
+                f"**{leader_name}** - choose your stat with `/play`"
+            )
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
         await interaction.response.defer()
@@ -80,7 +94,11 @@ class GainzBattlesGame:
             await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
             return
 
-        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
+        if len(self.viewed_cards) < len([p for p in self.players.values() if len(p["cards"]) > 0]):
+            await interaction.followup.send("❌ All active players must use `/card` first!", ephemeral=True)
+            return
+
+        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll cards shown below...")
 
         await asyncio.sleep(5)
 
@@ -103,10 +121,12 @@ class GainzBattlesGame:
         self.current_leader = winner_id
         self.played_cards.clear()
         self.round_number += 1
+        self.viewed_cards = set()
 
         await asyncio.sleep(5)
 
-        await interaction.followup.send("**Next round starting...**")
+        await interaction.followup.send("**All active players:** Type `/card` to see your next round card!")
+
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
