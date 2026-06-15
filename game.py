@@ -26,6 +26,17 @@ class GainzBattlesGame:
         }
         return True
 
+    def add_test_player(self):
+        if len(self.players) >= self.max_players:
+            return False
+        test_id = 999999999
+        self.players[test_id] = {
+            "name": "🤖 Test Player",
+            "cards": [],
+            "lives": True
+        }
+        return True
+
     def reset_game(self):
         self.players = {}
         self.current_leader = None
