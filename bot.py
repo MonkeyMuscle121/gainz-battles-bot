@@ -53,12 +53,11 @@ async def auto_start_game(channel_id, original_interaction):
     game = games[channel_id]
 
     if game.current_leader is not None:
-        return  # Game already started
+        return  # Already started
 
     if len(game.players) == 1:
-        # Auto add test player if alone
         game.add_test_player()
-        await original_interaction.channel.send("🤖 **Test Player** added automatically (solo mode)")
+        await original_interaction.channel.send("🤖 **Test Player** added automatically for solo play!")
 
     if game.start_game():
         leader_name = game.players[game.current_leader]['name']
@@ -91,7 +90,6 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
-# Rest of commands (card, play, leaderboard) remain the same
 @bot.tree.command(name="card", description="View your current round card")
 async def card(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
