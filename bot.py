@@ -15,25 +15,17 @@ games = {}
 @bot.event
 async def on_ready():
     print(f"💪 $GAINZ BATTLES Bot is online as {bot.user}")
-    print("Use !resetcommands to fix slash menu")
 
-# ====================== STRONG RESET ======================
 @bot.command(name="resetcommands")
 async def resetcommands(ctx):
-    await ctx.send("🔄 **Full reset in progress...**")
+    await ctx.send("🔄 Resetting commands...")
     try:
-        # Clear everything
         bot.tree.clear_commands(guild=ctx.guild)
-        
-        # Re-sync guild + global
-        guild_synced = await bot.tree.sync(guild=ctx.guild)
-        global_synced = await bot.tree.sync()
-        
-        await ctx.send(f"✅ **Full sync done!**\nGuild: {len(guild_synced)} | Global: {len(global_synced)}\n\n**Fully close and reopen Discord app**")
+        await bot.tree.sync(guild=ctx.guild)
+        await bot.tree.sync()
+        await ctx.send("✅ Commands reset!")
     except Exception as e:
         await ctx.send(f"Error: {e}")
-
-# ====================== GAME COMMANDS ======================
 
 @bot.tree.command(name="join", description="Join the game")
 async def join(interaction: discord.Interaction):
@@ -54,18 +46,28 @@ async def join(interaction: discord.Interaction):
         await interaction.response.send_message("Game full or already joined!", ephemeral=True)
 
 async def auto_start_game(channel_id, original_interaction):
-    await asyncio.sleep(120)
-    if channel_id in games:
-        game = games[channel_id]
-        if len(game.players) >= 2 and game.current_leader is None:
-            if game.start_game():
-                leader_name = game.players[game.current_leader]['name']
-                await original_interaction.channel.send(
-                    f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
-                    f"First leader: **{leader_name}**\n\n"
-                    f"**All players:** Type `/card` to see your round card!"
-                )
-                await game.deal_round_cards(original_interaction)
+    await asyncio.sleep(120)  # 2 minutes
+
+    if channel_id not in games:
+        return
+    game = games[channel_id]
+
+    if game.current_leader is not None:
+        return  # Game already started
+
+    if len(game.players) == 1:
+        # Auto add test player if alone
+        game.add_test_player()
+        await original_interaction.channel.send("🤖 **Test Player** added automatically (solo mode)")
+
+    if game.start_game():
+        leader_name = game.players[game.current_leader]['name']
+        await original_interaction.channel.send(
+            f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
+            f"First leader: **{leader_name}**\n\n"
+            f"**All players:** Type `/card` to see your round card!"
+        )
+        await game.deal_round_cards(original_interaction)
 
 @bot.tree.command(name="start", description="Manually start the game")
 async def start(interaction: discord.Interaction):
@@ -89,6 +91,7 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
 
+# Rest of commands (card, play, leaderboard) remain the same
 @bot.tree.command(name="card", description="View your current round card")
 async def card(interaction: discord.Interaction):
     game = games.get(interaction.channel.id)
