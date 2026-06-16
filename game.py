@@ -81,21 +81,6 @@ class GainzBattlesGame:
             if pid == 999999999:
                 self.viewed_cards.add(pid)
 
-        # If THE BOT is the leader, auto-play immediately
-        if self.current_leader == 999999999:
-            asyncio.create_task(self._bot_auto_play(interaction))
-
-    async def _bot_auto_play(self, interaction: discord.Interaction):
-        await asyncio.sleep(3)  # Small delay so cards are shown first
-
-        stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
-        stat = random.choice(stats)
-
-        await interaction.channel.send(f"🤖 **THE BOT** chose **{stat}**")
-
-        # Run the rest of the play logic
-        await self._execute_play(stat, interaction)
-
     async def show_card(self, interaction: discord.Interaction):
         if interaction.user.id not in self.played_cards:
             await interaction.response.send_message("No card dealt yet. Use `/start` first.", ephemeral=True)
@@ -109,15 +94,36 @@ class GainzBattlesGame:
 
         self.viewed_cards.add(interaction.user.id)
 
-        if len(self.viewed_cards) == len([p for p in self.players.values() if len(p["cards"]) > 0]):
+        # Check if all active players have viewed
+        active_players = len([p for p in self.players.values() if len(p["cards"]) > 0])
+        if len(self.viewed_cards) >= active_players:
             leader_name = self.players[self.current_leader]['name']
             await interaction.followup.send(
                 f"✅ **All active users have now seen their cards.**\n"
                 f"The lead player **{leader_name}** choose your stat with `/play`"
             )
 
-    async def _execute_play(self, stat: str, interaction: discord.Interaction):
-        await interaction.channel.send(f"**Round {self.round_number}** — **THE BOT** chose **{stat}**\n\nAll users cards now shown below...")
+    async def play_card(self, interaction: discord.Interaction, stat: str = None):
+        await interaction.response.defer()
+
+        # AUTO PLAY FOR THE BOT
+        if self.current_leader == 999999999:
+            # Wait a bit for other players to view cards
+            await asyncio.sleep(5)
+            stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
+            stat = random.choice(stats)
+            await interaction.followup.send(f"🤖 **THE BOT** chose **{stat}**")
+        else:
+            if interaction.user.id != self.current_leader:
+                await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
+                return
+
+            active_players = len([p for p in self.players.values() if len(p["cards"]) > 0])
+            if len(self.viewed_cards) < active_players:
+                await interaction.followup.send("❌ All active players must use `/card` first!", ephemeral=True)
+                return
+
+            await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
 
         await asyncio.sleep(5)
 
@@ -125,7 +131,7 @@ class GainzBattlesGame:
             player_name = self.players[pid]["name"]
             embed = discord.Embed(title=f"💪 {player_name} played **{card[0]}**", color=0xFFD700)
             embed.set_image(url=card[1]["image"])
-            await interaction.channel.send(embed=embed)
+            await interaction.followup.send(embed=embed)
 
         await asyncio.sleep(5)
 
@@ -146,7 +152,7 @@ class GainzBattlesGame:
         won_cards = list(self.played_cards.values())
         self.players[winner_id]["cards"].extend(won_cards)
 
-        await interaction.channel.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
+        await interaction.followup.send(f"🏆 **{winner_name}** wins the round with **{stat}**!\n"
                                         f"The rest of you {roast}")
 
         self.current_leader = winner_id
@@ -156,25 +162,12 @@ class GainzBattlesGame:
 
         await asyncio.sleep(5)
 
-        await interaction.channel.send("**All active players:** Type `/card` to see your next round card!")
+        await interaction.followup.send("**All active players:** Type `/card` to see your next round card!")
 
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
+            await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
                                             f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
             self.reset_game()
-
-    async def play_card(self, interaction: discord.Interaction, stat: str):
-        await interaction.response.defer()
-
-        if interaction.user.id != self.current_leader:
-            await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
-            return
-
-        if len(self.viewed_cards) < len([p for p in self.players.values() if len(p["cards"]) > 0]):
-            await interaction.followup.send("❌ All active players must use `/card` first!", ephemeral=True)
-            return
-
-        await self._execute_play(stat, interaction)
