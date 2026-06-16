@@ -104,10 +104,8 @@ class GainzBattlesGame:
     async def play_card(self, interaction: discord.Interaction, stat: str = None):
         await interaction.response.defer()
 
-        # Auto-play for Test Player
-        is_test_leader = self.current_leader == 999999999
-
-        if is_test_leader:
+        # AUTO PLAY FOR TEST PLAYER
+        if self.current_leader == 999999999:
             stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
             stat = random.choice(stats)
             await interaction.followup.send(f"🤖 **Test Player** chose **{stat}**")
