@@ -31,7 +31,7 @@ class GainzBattlesGame:
             return False
         test_id = 999999999
         self.players[test_id] = {
-            "name": "🤖 Test Player",
+            "name": "THE BOT",
             "cards": [],
             "lives": True
         }
@@ -77,7 +77,7 @@ class GainzBattlesGame:
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # Auto-view for Test Player
+            # Auto-view for THE BOT
             if pid == 999999999:
                 self.viewed_cards.add(pid)
 
@@ -104,11 +104,11 @@ class GainzBattlesGame:
     async def play_card(self, interaction: discord.Interaction, stat: str = None):
         await interaction.response.defer()
 
-        # AUTO PLAY FOR TEST PLAYER
+        # AUTO PLAY FOR THE BOT
         if self.current_leader == 999999999:
             stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
             stat = random.choice(stats)
-            await interaction.followup.send(f"🤖 **Test Player** chose **{stat}**")
+            await interaction.followup.send(f"🤖 **THE BOT** chose **{stat}**")
         else:
             if interaction.user.id != self.current_leader:
                 await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
