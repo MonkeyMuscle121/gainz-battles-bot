@@ -123,7 +123,7 @@ class GainzBattlesGame:
         await self._execute_play(stat, interaction)
 
     async def _execute_play(self, stat: str, interaction: discord.Interaction):
-        await interaction.channel.send(f"**Round {self.round_number}** — **THE BOT** chose **{stat}**\n\nAll users cards now shown below soon...")
+        await interaction.channel.send(f"**Round {self.round_number}** — Players selected **{stat}**\n\nAll cards now shown below soon LFG")
 
         await asyncio.sleep(5)
 
