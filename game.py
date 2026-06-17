@@ -81,7 +81,7 @@ class GainzBattlesGame:
             if pid == 999999999:
                 self.viewed_cards.add(pid)
 
-        # Start 10 second timer for human players
+        # Start 15 second timer for human players
         asyncio.create_task(self._card_view_timer(interaction))
 
     async def _card_view_timer(self, interaction: discord.Interaction):
@@ -94,7 +94,7 @@ class GainzBattlesGame:
         # Show "all seen or timeout" message
         leader_name = self.players[self.current_leader]['name']
         await interaction.channel.send(
-            f"✅ **All active players have either seen their card or 10s has expired.**\n"
+            f"✅ **All active players have either seen their card or its auto played because your slow as FCK.**\n"
             f"The lead player **{leader_name}** choose your stat with `/play`"
         )
 
@@ -141,7 +141,7 @@ class GainzBattlesGame:
         roast_lines = [
             "got absolutely BODIED 💀", "is built like a wet noodle", "should stick to peeling bananas",
             "just got sent to the zoo", "is crying in the corner eating reject bananas",
-            "needs to hit the gym", "is the definition of 'all talk, no gains'"
+            "needs to hit the gym", "is the definition of 'all talk, no gainz'"
         ]
         roast = random.choice(roast_lines)
 
@@ -156,13 +156,13 @@ class GainzBattlesGame:
         self.viewed_cards = set()
 
         await asyncio.sleep(5)
-        await interaction.channel.send("**All active players:** Type `/card` to see your next round card!")
+        await interaction.channel.send("**All active players:** Type `/card` to see your next round card you got 15 seconds before autoplay!")
 
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak monkey enclosure 🐒💀")
+            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak monkey enclosure because youve chromosomes missing 🐒💀")
             self.reset_game()
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
