@@ -98,16 +98,16 @@ class GainzBattlesGame:
         await interaction.response.defer()
 
         if interaction.user.id != self.current_leader:
-            await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
+            await interaction.followup.send("❌ Only the current leader can choose the stat! You melt", ephemeral=True)
             return
 
         # 10 second timer for viewing cards
         active_players = len([p for p in self.players.values() if len(p["cards"]) > 0])
         if len(self.viewed_cards) < active_players:
-            await interaction.followup.send("❌ All active players must use `/card` first! (10 seconds remaining)")
+            await interaction.followup.send("❌ All active players must use `/card` first someones slow as fck ! (10 seconds remaining)")
             await asyncio.sleep(10)
 
-        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** chose **{stat}**\n\nAll users cards now shown below...")
+        await interaction.followup.send(f"**Round {self.round_number}** — **{interaction.user.mention}** choose **{stat}**\n\nAll users cards now shown below... in 5 seconds")
 
         await asyncio.sleep(5)
 
@@ -129,7 +129,7 @@ class GainzBattlesGame:
             "just got sent to the zoo",
             "is crying in the corner eating reject bananas",
             "needs to hit the gym",
-            "is the definition of 'all talk, no gains'"
+            "is the definition of 'all talk, no gainz'"
         ]
         roast = random.choice(roast_lines)
 
@@ -153,5 +153,5 @@ class GainzBattlesGame:
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
             await interaction.followup.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\n"
-                                            f"The rest of you are officially banished to the weak monkey enclosure 🐒💀")
+                                            f"The rest of you are officially banished to the weak monkey enclosure basically those with odd chromosomes 🐒💀")
             self.reset_game()
