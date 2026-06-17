@@ -23,7 +23,7 @@ async def resetcommands(ctx):
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
         await bot.tree.sync()
-        await ctx.send("✅ Commands reset! Restart Discord app.")
+        await ctx.send("✅ Commands reset!")
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
@@ -40,13 +40,13 @@ async def join(interaction: discord.Interaction):
         await interaction.response.send_message(f"💪 {interaction.user.mention} joined! ({len(game.players)}/4)")
 
         if was_empty:
-            await interaction.followup.send("⏰ **Game will auto start in 2 minutes...**")
+            await interaction.followup.send("⏰ **Game will auto start in 1 minute...**")
             asyncio.create_task(auto_start_game(channel_id, interaction))
     else:
         await interaction.response.send_message("Game full or already joined!", ephemeral=True)
 
 async def auto_start_game(channel_id, original_interaction):
-    await asyncio.sleep(120)  # 2 minutes
+    await asyncio.sleep(60)  # 1 minute
 
     if channel_id not in games:
         return
@@ -57,14 +57,14 @@ async def auto_start_game(channel_id, original_interaction):
 
     if len(game.players) == 1:
         game.add_test_player()
-        await original_interaction.channel.send("🤖 **THE BOT** added automatically!")
+        await original_interaction.channel.send("🤖 **Test Player** added automatically!")
 
     if game.start_game():
         leader_name = game.players[game.current_leader]['name']
         await original_interaction.channel.send(
             f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
             f"First leader: **{leader_name}**\n\n"
-            f"**All players:** Type `/card` to see your round card!"
+            f"**All players:** Type `/card` to see your round card! (you have 10 seconds)"
         )
         await game.deal_round_cards(original_interaction)
 
@@ -81,14 +81,14 @@ async def start(interaction: discord.Interaction):
 
     if len(game.players) == 1:
         game.add_test_player()
-        await interaction.channel.send("🤖 **THE BOT** added automatically!")
+        await interaction.channel.send("🤖 **Test Player** added automatically!")
 
     if game.start_game():
         leader_name = game.players[game.current_leader]['name']
         await interaction.response.send_message(
             f"🎮 **$GAINZ BATTLES STARTED!**\n"
             f"First leader: **{leader_name}**\n\n"
-            f"**All players:** Type `/card` to see your round card!"
+            f"**All players:** Type `/card` to see your round card! (you have 10 seconds)"
         )
         await game.deal_round_cards(interaction)
     else:
