@@ -85,7 +85,7 @@ class GainzBattlesGame:
         asyncio.create_task(self._card_view_timer(interaction))
 
     async def _card_view_timer(self, interaction: discord.Interaction):
-        await asyncio.sleep(10)
+        await asyncio.sleep(15)
         # Force all remaining players as "viewed" after timeout
         active_players = len([p for p in self.players.values() if len(p["cards"]) > 0])
         if len(self.viewed_cards) < active_players:
@@ -119,7 +119,7 @@ class GainzBattlesGame:
         await asyncio.sleep(2)
         stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
         stat = random.choice(stats)
-        await interaction.channel.send(f"🤖 **THE BOT** chose **{stat}**")
+        await interaction.channel.send(f"🤖 **player selected **{stat}**")
         await self._execute_play(stat, interaction)
 
     async def _execute_play(self, stat: str, interaction: discord.Interaction):
