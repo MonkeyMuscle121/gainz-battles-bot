@@ -64,7 +64,7 @@ async def auto_start_game(channel_id, original_interaction):
         await original_interaction.channel.send(
             f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
             f"First leader: **{leader_name}**\n\n"
-            f"**All players:** Type `/card` to see your round card! dont fck about (you have 15 seconds) before autoplay"
+            f"**All players:** Type `/card` to see your round card! dont fck about (you have 15 seconds) before autoplay, At Any time use command /leaderboard for scores"
         )
         await game.deal_round_cards(original_interaction)
 
