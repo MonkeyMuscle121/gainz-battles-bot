@@ -64,7 +64,7 @@ async def auto_start_game(channel_id, original_interaction):
         await original_interaction.channel.send(
             f"🎮 **$GAINZ BATTLES AUTO STARTED!**\n"
             f"First leader: **{leader_name}**\n\n"
-            f"**All players:** Type `/card` to see your round card! (you have 10 seconds)"
+            f"**All players:** Type `/card` to see your round card! dont fck about (you have 15 seconds) before autoplay"
         )
         await game.deal_round_cards(original_interaction)
 
@@ -76,7 +76,7 @@ async def start(interaction: discord.Interaction):
     game = games[channel_id]
 
     if game.players and game.current_leader is not None:
-        await interaction.response.send_message("❌ A game is already running!", ephemeral=True)
+        await interaction.response.send_message("❌ A game is already running! you melt", ephemeral=True)
         return
 
     if len(game.players) == 1:
@@ -88,7 +88,7 @@ async def start(interaction: discord.Interaction):
         await interaction.response.send_message(
             f"🎮 **$GAINZ BATTLES STARTED!**\n"
             f"First leader: **{leader_name}**\n\n"
-            f"**All players:** Type `/card` to see your round card! (you have 10 seconds)"
+            f"**All players:** Type `/card` to see your round card! (you have 15 seconds)"
         )
         await game.deal_round_cards(interaction)
     else:
