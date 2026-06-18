@@ -157,11 +157,11 @@ class GainzBattlesGame:
         await asyncio.sleep(2)
         stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
         stat = random.choice(stats)
-        await interaction.channel.send(f"🤖 **THE BOT** chose **{stat}**")
+        await interaction.channel.send(f"🤖 PLAYER SELECTED **{stat}**" LFG)
         await self._execute_play(stat, interaction)
 
     async def _execute_play(self, stat: str, interaction: discord.Interaction):
-        await interaction.channel.send(f"**Round {self.round_number}** — **THE BOT** chose **{stat}**\n\nAll users cards now shown below...")
+        await interaction.channel.send(f"**Round {self.round_number}** — SELECTED TO PLAY **{stat}**\n\nAll users cards now shown below...LFG")
 
         await asyncio.sleep(5)
 
@@ -194,13 +194,13 @@ class GainzBattlesGame:
         self.viewed_cards = set()
 
         await asyncio.sleep(5)
-        await interaction.channel.send("**All active players:** Type `/card` to see your next round card!")
+        await interaction.channel.send("**All active players:** Type `/card` to see your next round card! sharpish you melt")
 
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak monkey enclosure 🐒💀")
+            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak ass monkey enclosure 🐒💀")
             self.reset_game()
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
