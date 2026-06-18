@@ -107,7 +107,7 @@ class GainzBattlesGame:
             asyncio.create_task(self._bot_auto_play(interaction))
 
     async def _leader_inactivity_timer(self, interaction: discord.Interaction):
-        await asyncio.sleep(15)  # 15 second warning delay
+        await asyncio.sleep(15)
 
         if not self.game_active or self.current_leader is None:
             return
@@ -115,17 +115,16 @@ class GainzBattlesGame:
         leader_id = self.current_leader
         leader_name = self.players[leader_id]['name']
 
-        # 15 second warning with countdown simulation
-        warning_msg = await interaction.channel.send(f"⚠️ **{leader_name}** must play within **15 seconds** or be removed!")
+        warning_msg = await interaction.channel.send(f"⚠️ **{leader_name}** must play within **15 seconds** or be removed Come on you MELT!")
 
-        for remaining in range(15, 0, -5):
+        for remaining in [10, 5]:
             await asyncio.sleep(5)
             try:
                 await warning_msg.edit(content=f"⚠️ **{leader_name}** must play within **{remaining} seconds** or be removed!")
             except:
                 pass
 
-        await asyncio.sleep(5)  # Final 5s + grace
+        await asyncio.sleep(30)  # 30 second grace
 
         if self.game_active and self.current_leader == leader_id:
             del self.players[leader_id]
@@ -157,11 +156,11 @@ class GainzBattlesGame:
         await asyncio.sleep(2)
         stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
         stat = random.choice(stats)
-        await interaction.channel.send(f"🤖 PLAYER SELECTED **{stat}**" LFG)
+        await interaction.channel.send(f"🤖 **THE BOT** chose **{stat}**")
         await self._execute_play(stat, interaction)
 
     async def _execute_play(self, stat: str, interaction: discord.Interaction):
-        await interaction.channel.send(f"**Round {self.round_number}** — SELECTED TO PLAY **{stat}**\n\nAll users cards now shown below...LFG")
+        await interaction.channel.send(f"**Round {self.round_number}** — **THE PLAYER** SELECTED **{stat}**\n\nAll users cards now shown below...LFG")
 
         await asyncio.sleep(5)
 
@@ -194,13 +193,13 @@ class GainzBattlesGame:
         self.viewed_cards = set()
 
         await asyncio.sleep(5)
-        await interaction.channel.send("**All active players:** Type `/card` to see your next round card! sharpish you melt")
+        await interaction.channel.send("**All active players:** Type `/card` to see your next round card!")
 
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak ass monkey enclosure 🐒💀")
+            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak ASS monkey enclosure 🐒💀")
             self.reset_game()
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
