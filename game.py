@@ -13,6 +13,7 @@ class GainzBattlesGame:
         self.round_number = 0
         self.viewed_cards = set()
         self.game_active = True
+        self.inactivity_task = None
 
     def add_player(self, player_id, name):
         if not self.game_active or len(self.players) >= self.max_players:
@@ -44,6 +45,8 @@ class GainzBattlesGame:
         self.round_number = 0
         self.viewed_cards = set()
         self.game_active = True
+        if self.inactivity_task:
+            self.inactivity_task.cancel()
 
     def start_game(self):
         if len(self.players) < 2:
@@ -77,30 +80,65 @@ class GainzBattlesGame:
             card = player["cards"].pop(0)
             self.played_cards[pid] = card
 
-            # AUTO-VIEW FOR THE BOT
             if pid == 999999999:
                 self.viewed_cards.add(pid)
 
-        # Start 15 second timer for human players
         asyncio.create_task(self._card_view_timer(interaction))
 
     async def _card_view_timer(self, interaction: discord.Interaction):
         await asyncio.sleep(15)
-        # Force all remaining players as "viewed" after timeout
+
         active_players = len([p for p in self.players.values() if len(p["cards"]) > 0])
         if len(self.viewed_cards) < active_players:
-            self.viewed_cards.update([pid for pid in self.players if pid not in self.viewed_cards])
+            for pid in list(self.players.keys()):
+                if pid not in self.viewed_cards:
+                    self.viewed_cards.add(pid)
 
-        # Show "all seen or timeout" message
         leader_name = self.players[self.current_leader]['name']
         await interaction.channel.send(
-            f"✅ **All active players have either seen their card or its auto played because your slow as FCK.**\n"
+            f"✅ **All active players have either seen their card or 15s has expired.**\n"
             f"The lead player **{leader_name}** choose your stat with `/play`"
         )
 
-        # If BOT is leader, auto-play now
+        if self.current_leader != 999999999:
+            self.inactivity_task = asyncio.create_task(self._leader_inactivity_timer(interaction))
+
         if self.current_leader == 999999999:
             asyncio.create_task(self._bot_auto_play(interaction))
+
+    async def _leader_inactivity_timer(self, interaction: discord.Interaction):
+        await asyncio.sleep(15)  # 15 second warning delay
+
+        if not self.game_active or self.current_leader is None:
+            return
+
+        leader_id = self.current_leader
+        leader_name = self.players[leader_id]['name']
+
+        # 15 second warning with countdown simulation
+        warning_msg = await interaction.channel.send(f"⚠️ **{leader_name}** must play within **15 seconds** or be removed!")
+
+        for remaining in range(15, 0, -5):
+            await asyncio.sleep(5)
+            try:
+                await warning_msg.edit(content=f"⚠️ **{leader_name}** must play within **{remaining} seconds** or be removed!")
+            except:
+                pass
+
+        await asyncio.sleep(5)  # Final 5s + grace
+
+        if self.game_active and self.current_leader == leader_id:
+            del self.players[leader_id]
+            await interaction.channel.send(f"⏰ **{leader_name}** was removed for inactivity.")
+
+            if len(self.players) <= 1:
+                await interaction.channel.send("👥 **Not enough players left. Game ended.** Others can now /join a new game.")
+                self.reset_game()
+            else:
+                self.current_leader = random.choice(list(self.players.keys()))
+                leader_name = self.players[self.current_leader]['name']
+                await interaction.channel.send(f"**New leader:** {leader_name}")
+                await self.deal_round_cards(interaction)
 
     async def show_card(self, interaction: discord.Interaction):
         if interaction.user.id not in self.played_cards:
@@ -119,11 +157,11 @@ class GainzBattlesGame:
         await asyncio.sleep(2)
         stats = ["Strength", "Agility", "Intelligence", "Cuteness", "Volume", "Banana Affinity"]
         stat = random.choice(stats)
-        await interaction.channel.send(f"🤖 **player selected **{stat}**")
+        await interaction.channel.send(f"🤖 **THE BOT** chose **{stat}**")
         await self._execute_play(stat, interaction)
 
     async def _execute_play(self, stat: str, interaction: discord.Interaction):
-        await interaction.channel.send(f"**Round {self.round_number}** — Players selected **{stat}**\n\nAll cards now shown below soon LFG")
+        await interaction.channel.send(f"**Round {self.round_number}** — **THE BOT** chose **{stat}**\n\nAll users cards now shown below...")
 
         await asyncio.sleep(5)
 
@@ -141,7 +179,7 @@ class GainzBattlesGame:
         roast_lines = [
             "got absolutely BODIED 💀", "is built like a wet noodle", "should stick to peeling bananas",
             "just got sent to the zoo", "is crying in the corner eating reject bananas",
-            "needs to hit the gym", "is the definition of 'all talk, no gainz'"
+            "needs to hit the gym", "is the definition of 'all talk, no gains'"
         ]
         roast = random.choice(roast_lines)
 
@@ -156,13 +194,13 @@ class GainzBattlesGame:
         self.viewed_cards = set()
 
         await asyncio.sleep(5)
-        await interaction.channel.send("**All active players:** Type `/card` to see your next round card you got 15 seconds before autoplay!")
+        await interaction.channel.send("**All active players:** Type `/card` to see your next round card!")
 
         await self.deal_round_cards(interaction)
 
         remaining = [p for p in self.players.values() if len(p["cards"]) > 0]
         if len(remaining) <= 1:
-            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak monkey enclosure because youve chromosomes missing 🐒💀")
+            await interaction.channel.send(f"🎉 **GAME OVER! {winner_name} is the $GAINZ CHAMPION!** 💪\nThe rest of you are officially banished to the weak monkey enclosure 🐒💀")
             self.reset_game()
 
     async def play_card(self, interaction: discord.Interaction, stat: str):
@@ -171,5 +209,8 @@ class GainzBattlesGame:
         if interaction.user.id != self.current_leader:
             await interaction.followup.send("❌ Only the current leader can choose the stat!", ephemeral=True)
             return
+
+        if self.inactivity_task:
+            self.inactivity_task.cancel()
 
         await self._execute_play(stat, interaction)
